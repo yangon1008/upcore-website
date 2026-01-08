@@ -1,9 +1,10 @@
 
 import React from 'react';
 import { ArrowRight } from 'lucide-react';
+import { ViewType } from '../App';
 
 interface ProductGridProps {
-  onNavigate: () => void;
+  onNavigate: (view: ViewType) => void;
 }
 
 const ProductGrid: React.FC<ProductGridProps> = ({ onNavigate }) => {
@@ -39,10 +40,11 @@ const ProductGrid: React.FC<ProductGridProps> = ({ onNavigate }) => {
                 </div>
                 
                 <div className="flex items-center justify-center space-x-6 pt-4">
-                  <button onClick={onNavigate} className="bg-black text-white px-8 py-3 rounded-full font-bold text-sm hover:scale-105 transition-all flex items-center gap-2">
+                  {/* Updated button actions to pass specific ViewType to onNavigate */}
+                  <button onClick={() => onNavigate('shop')} className="bg-black text-white px-8 py-3 rounded-full font-bold text-sm hover:scale-105 transition-all flex items-center gap-2">
                     立即购买 <ArrowRight size={16} />
                   </button>
-                  <button onClick={onNavigate} className="text-black font-bold text-sm hover:underline underline-offset-8 transition-all">
+                  <button onClick={() => onNavigate('detail')} className="text-black font-bold text-sm hover:underline underline-offset-8 transition-all">
                     进一步了解
                   </button>
                 </div>

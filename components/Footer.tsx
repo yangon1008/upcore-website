@@ -1,8 +1,9 @@
 
 import React from 'react';
+import { ViewType } from '../App';
 
 interface FooterProps {
-  onNavigate: () => void;
+  onNavigate: (view: ViewType) => void;
 }
 
 const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
@@ -25,6 +26,16 @@ const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
     }
   ];
 
+  // Logic to map footer link strings to their corresponding application views
+  const handleLinkClick = (link: string) => {
+    if (link === '联系我们') onNavigate('contact');
+    else if (link === '品牌故事' || link === '关于溯洄') onNavigate('about');
+    else if (link === '服务支持' || link === '帮助中心' || link === '售后政策') onNavigate('support');
+    else if (link === '溯洄商城') onNavigate('shop');
+    else if (link === '扫振 i2 系列' || link === '扫振 SE 系列' || link === 'Swift 4 电吹风' || link === 'LISSOME 洗碗机') onNavigate('detail');
+    else onNavigate('home');
+  };
+
   return (
     <footer className="bg-[#050505] text-[#888888] pt-32 pb-16">
       <div className="max-w-[1440px] mx-auto px-6 md:px-12">
@@ -37,9 +48,9 @@ const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
               <p className="text-sm leading-relaxed">溯洄成立于2021年，致力于通过科技创新重新定义个人护理与家庭生活方式。每一个产品都是对美学与功能的极致追求。</p>
             </div>
             <div className="flex space-x-6 text-white">
-              <button onClick={onNavigate} className="w-10 h-10 rounded-full border border-white/10 flex items-center justify-center hover:bg-white/5 transition-colors cursor-pointer">WX</button>
-              <button onClick={onNavigate} className="w-10 h-10 rounded-full border border-white/10 flex items-center justify-center hover:bg-white/5 transition-colors cursor-pointer">WB</button>
-              <button onClick={onNavigate} className="w-10 h-10 rounded-full border border-white/10 flex items-center justify-center hover:bg-white/5 transition-colors cursor-pointer">RD</button>
+              <button onClick={() => onNavigate('home')} className="w-10 h-10 rounded-full border border-white/10 flex items-center justify-center hover:bg-white/5 transition-colors cursor-pointer">WX</button>
+              <button onClick={() => onNavigate('home')} className="w-10 h-10 rounded-full border border-white/10 flex items-center justify-center hover:bg-white/5 transition-colors cursor-pointer">WB</button>
+              <button onClick={() => onNavigate('home')} className="w-10 h-10 rounded-full border border-white/10 flex items-center justify-center hover:bg-white/5 transition-colors cursor-pointer">RD</button>
             </div>
           </div>
 
@@ -51,7 +62,8 @@ const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
                 <ul className="space-y-4 text-[13px] font-medium">
                   {col.links.map((link, j) => (
                     <li key={j}>
-                      <button onClick={onNavigate} className="hover:text-white transition-colors block text-left w-full">{link}</button>
+                      {/* Updated button handler to support the new onNavigate signature */}
+                      <button onClick={() => handleLinkClick(link)} className="hover:text-white transition-colors block text-left w-full">{link}</button>
                     </li>
                   ))}
                 </ul>
@@ -64,14 +76,14 @@ const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
         <div className="pt-12 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-8 text-[11px] font-semibold tracking-wide uppercase opacity-40">
           <div className="flex flex-wrap items-center justify-center gap-8">
             <p>© 2025 UPCORE TECHNOLOGY</p>
-            <button onClick={onNavigate} className="hover:text-white transition-colors">隐私政策</button>
-            <button onClick={onNavigate} className="hover:text-white transition-colors">法律声明</button>
-            <button onClick={onNavigate} className="hover:text-white transition-colors">粤ICP备12345678号</button>
+            <button onClick={() => onNavigate('home')} className="hover:text-white transition-colors">隐私政策</button>
+            <button onClick={() => onNavigate('home')} className="hover:text-white transition-colors">法律声明</button>
+            <button onClick={() => onNavigate('home')} className="hover:text-white transition-colors">粤ICP备12345678号</button>
           </div>
           <div className="flex items-center space-x-6">
-            <button onClick={onNavigate}>CHINA (CN)</button>
+            <button onClick={() => onNavigate('home')}>CHINA (CN)</button>
             <div className="h-4 w-[1px] bg-white/20"></div>
-            <button onClick={onNavigate}>ENGLISH</button>
+            <button onClick={() => onNavigate('home')}>ENGLISH</button>
           </div>
         </div>
       </div>
