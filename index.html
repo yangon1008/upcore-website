@@ -15,6 +15,49 @@
         .gradient-dark {
             background: radial-gradient(circle at 50% 50%, #1a1a1a 0%, #000000 100%);
         }
+        
+        /* 全局动画定义 */
+        @keyframes gradient-shift {
+            0%, 100% { opacity: 0.3; }
+            50% { opacity: 0.7; }
+        }
+        
+        @keyframes gradient-text {
+            0%, 100% {
+                background-position: 0% 50%;
+            }
+            50% {
+                background-position: 100% 50%;
+            }
+        }
+        
+        @keyframes pulse-slow {
+            0%, 100% { opacity: 0.8; transform: scale(1); }
+            50% { opacity: 1; transform: scale(1.05); }
+        }
+        
+        @keyframes fade-in {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        /* 动画类名 */
+        .animate-gradient-shift {
+            animation: gradient-shift 8s ease-in-out infinite;
+        }
+        
+        .animate-gradient-text {
+            background-size: 200% 200%;
+            animation: gradient-text 8s ease-in-out infinite;
+        }
+        
+        .animate-pulse-slow {
+            animation: pulse-slow 4s ease-in-out infinite;
+        }
+        
+        .animate-fade-in {
+            animation: fade-in 1s ease-out forwards;
+        }
     </style>
 <script type="importmap">
 {
@@ -29,5 +72,6 @@
 </head>
 <body class="bg-white text-gray-900">
     <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
 </body>
 </html>
