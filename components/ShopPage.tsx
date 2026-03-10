@@ -24,6 +24,16 @@ const ShopPage: React.FC<ShopPageProps> = ({ onBack }) => {
   return (
     <div className="min-h-screen bg-[#F9F9F9] pt-32 pb-20 px-6 transition-all duration-300">
       <div className="max-w-4xl mx-auto">
+        {/* Logo */}
+        <div className="flex items-center mb-8">
+          <img 
+            src="/images/logo.png" 
+            alt="Upcore 溯洄" 
+            className="h-8 w-auto cursor-pointer"
+            onClick={onBack}
+            style={{ cursor: 'pointer' }}
+          />
+        </div>
         <button 
           onClick={onBack} 
           className="flex items-center gap-2 text-gray-500 mb-12 hover:text-black transition-all duration-300 group"

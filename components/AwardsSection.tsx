@@ -9,7 +9,7 @@ const AwardsSection: React.FC = () => {
     { name: 'Macworld', text: 'Macworld' },
     { name: 'TechHive', text: 'TechHive' },
     { name: 'Yahoo', text: 'Yahoo!' },
-    { name: 'AP', text: 'AP' },
+    // { name: 'AP', text: 'AP' },
   ];
 
   const sectionRef = useRef<HTMLDivElement>(null);

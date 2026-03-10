@@ -1,5 +1,6 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { ViewType } from '../App';
+import { useLanguage } from '../contexts/LanguageContext';
 
 // 扩展产品数据结构，添加苹果风格所需的详细信息
 interface Product {
@@ -13,6 +14,16 @@ interface Product {
   badge?: string;
   price: string;
   features: string[];
+  specs?: {
+    size: string;
+    sizeValue: string;
+    weight: string;
+    weightValue: string;
+    battery: string;
+    batteryValue: string;
+    chargeTime: string;
+    chargeTimeValue: string;
+  };
 }
 
 interface AppleStyleProductDisplayProps {
@@ -23,43 +34,44 @@ const AppleStyleProductDisplay: React.FC<AppleStyleProductDisplayProps> = ({ onN
   const [hoveredProduct, setHoveredProduct] = useState<number | null>(null);
   const [isVisible, setIsVisible] = useState(false);
   const sectionRef = useRef<HTMLDivElement>(null);
+  const { t, language } = useLanguage();
 
-  // 产品数据 - 扩展了价格、特性和高清图片
-  const products: Product[] = [
+  // 产品数据 - 使用useMemo确保语言变化时重新计算
+  const products: Product[] = useMemo(() => [
     {
       id: 1,
-      name: "扫振 SE",
-      desc: "为你开启专业口腔护理的第一支牙刷",
+      name: t('products.se.name'),
+      desc: t('products.se.desc'),
       img: "https://picsum.photos/seed/se-pro/800/800",
       detailedImg: "https://picsum.photos/seed/se-pro-detailed/1200/1200",
       color: "bg-[#F5F5F7]",
       gradient: "from-blue-600 to-purple-600",
-      price: "¥ 299",
-      features: [
-        "智能感应技术",
-        "3种清洁模式",
-        "IPX7防水设计",
-        "25天超长续航"
-      ]
+      price: t('products.se.price'),
+      features: t('products.se.features'),
+      specs: {
+        size: t('products.se.specs.size'),
+        sizeValue: t('products.se.specs.sizeValue'),
+        weight: t('products.se.specs.weight'),
+        weightValue: t('products.se.specs.weightValue'),
+        battery: t('products.se.specs.battery'),
+        batteryValue: t('products.se.specs.batteryValue'),
+        chargeTime: t('products.se.specs.chargeTime'),
+        chargeTimeValue: t('products.se.specs.chargeTimeValue')
+      }
     },
     {
       id: 2,
-      name: "Swift 4",
-      desc: "高速负离子，沙龙级护发体验",
+      name: t('products.swift.name'),
+      desc: t('products.swift.desc'),
       img: "https://picsum.photos/seed/swift-4/800/800",
       detailedImg: "https://picsum.photos/seed/swift-4-detailed/1200/1200",
       color: "bg-[#FAFAFA]",
       gradient: "from-pink-500 to-orange-500",
-      badge: "旗舰版",
-      price: "¥ 1,299",
-      features: [
-        "高速负离子技术",
-        "5档温度调节",
-        "360°旋转风嘴",
-        "智能恒温系统"
-      ]
+      badge: t('products.swift.badge'),
+      price: t('products.swift.price'),
+      features: t('products.swift.features')
     }
-  ];
+  ], [t, language]);
 
   // 滚动触发动画
   useEffect(() => {
@@ -89,7 +101,7 @@ const AppleStyleProductDisplay: React.FC<AppleStyleProductDisplayProps> = ({ onN
   return (
     <section 
       ref={sectionRef}
-      className="bg-white py-32 overflow-hidden relative"
+      className="bg-white py-32 overflow-hidden relative scroll-snap-align start"
     >
       {/* 背景装饰 - 苹果风格的简洁设计 */}
       <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-gray-200 to-transparent"></div>
@@ -103,14 +115,14 @@ const AppleStyleProductDisplay: React.FC<AppleStyleProductDisplayProps> = ({ onN
             transition-all duration-700 ease-out
             ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-30'}
           `}>
-            探索我们的产品
+            {t('products.title')}
           </h2>
           <p className={`
             text-xl text-gray-600 max-w-3xl mx-auto
             transition-all duration-700 ease-out delay-200
             ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-20'}
           `}>
-            创新科技，卓越设计，为您带来无与伦比的使用体验
+            {t('products.description')}
           </p>
         </div>
 
@@ -176,7 +188,7 @@ const AppleStyleProductDisplay: React.FC<AppleStyleProductDisplayProps> = ({ onN
                         hover:bg-gray-800 transition-colors duration-300
                       "
                     >
-                      立即购买
+                      {t('products.buyNow')}
                     </button>
                     <button
                       onClick={() => onNavigate('detail', product.name)}
@@ -186,7 +198,7 @@ const AppleStyleProductDisplay: React.FC<AppleStyleProductDisplayProps> = ({ onN
                         hover:bg-gray-50 transition-colors duration-300
                       "
                     >
-                      了解更多
+                      {t('products.learnMore')}
                     </button>
                   </div>
                 </div>
@@ -240,7 +252,7 @@ const AppleStyleProductDisplay: React.FC<AppleStyleProductDisplayProps> = ({ onN
 
                         {/* 主要特性 */}
                         <div>
-                          <h4 className="text-xl font-semibold mb-4">主要特性</h4>
+                          <h4 className="text-xl font-semibold mb-4">{t('products.featuresTitle')}</h4>
                           <ul className="space-y-4">
                             {product.features.map((feature, idx) => (
                               <li key={idx} className="flex items-start gap-3">
@@ -252,27 +264,29 @@ const AppleStyleProductDisplay: React.FC<AppleStyleProductDisplayProps> = ({ onN
                         </div>
 
                         {/* 技术规格概览 */}
-                        <div>
-                          <h4 className="text-xl font-semibold mb-4">技术规格</h4>
-                          <div className="grid grid-cols-2 gap-6">
-                            <div>
-                              <div className="text-sm text-gray-500 mb-2">尺寸</div>
-                              <div className="font-medium">180 × 40 × 40 mm</div>
-                            </div>
-                            <div>
-                              <div className="text-sm text-gray-500 mb-2">重量</div>
-                              <div className="font-medium">150 g</div>
-                            </div>
-                            <div>
-                              <div className="text-sm text-gray-500 mb-2">电池容量</div>
-                              <div className="font-medium">2000 mAh</div>
-                            </div>
-                            <div>
-                              <div className="text-sm text-gray-500 mb-2">充电时间</div>
-                              <div className="font-medium">3 小时</div>
+                        {product.specs && (
+                          <div>
+                            <h4 className="text-xl font-semibold mb-4">{t('products.specsTitle')}</h4>
+                            <div className="grid grid-cols-2 gap-6">
+                              <div>
+                                <div className="text-sm text-gray-500 mb-2">{product.specs.size}</div>
+                                <div className="font-medium">{product.specs.sizeValue}</div>
+                              </div>
+                              <div>
+                                <div className="text-sm text-gray-500 mb-2">{product.specs.weight}</div>
+                                <div className="font-medium">{product.specs.weightValue}</div>
+                              </div>
+                              <div>
+                                <div className="text-sm text-gray-500 mb-2">{product.specs.battery}</div>
+                                <div className="font-medium">{product.specs.batteryValue}</div>
+                              </div>
+                              <div>
+                                <div className="text-sm text-gray-500 mb-2">{product.specs.chargeTime}</div>
+                                <div className="font-medium">{product.specs.chargeTimeValue}</div>
+                              </div>
                             </div>
                           </div>
-                        </div>
+                        )}
 
                         {/* 操作按钮 */}
                         <div className="pt-4">
@@ -285,7 +299,7 @@ const AppleStyleProductDisplay: React.FC<AppleStyleProductDisplayProps> = ({ onN
                                 flex items-center justify-center gap-2
                               "
                             >
-                              <span>立即购买</span>
+                              <span>{t('products.buyNow')}</span>
                               <span>→</span>
                             </button>
                             <button
@@ -299,7 +313,7 @@ const AppleStyleProductDisplay: React.FC<AppleStyleProductDisplayProps> = ({ onN
                                 hover:bg-gray-50 transition-colors duration-300
                               "
                             >
-                              查看完整详情
+                              {t('products.viewDetails')}
                             </button>
                           </div>
                         </div>

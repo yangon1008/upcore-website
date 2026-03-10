@@ -1,16 +1,20 @@
 
 import React, { useState, useEffect } from 'react';
+import { LanguageProvider } from './contexts/LanguageContext';
 import Navbar from './components/Navbar';
 import Hero from './components/Hero';
 import LifestyleSection from './components/LifestyleSection';
 import FeatureGrid from './components/FeatureGrid';
 import AppleStyleProductDisplay from './components/AppleStyleProductDisplay';
 import TestimonialAwards from './components/TestimonialAwards';
+import AppDownload from './components/AppDownload';
 import Footer from './components/Footer';
 import DetailPage from './components/DetailPage';
 import InfoPage from './components/InfoPage';
+import AppPage from './components/AppPage';
+import PrivacyPage from './components/PrivacyPage';
 
-export type ViewType = 'home' | 'detail' | 'support' | 'about' | 'contact';
+export type ViewType = 'home' | 'detail' | 'support' | 'about' | 'app' | 'privacy';
 
 const App: React.FC = () => {
   const [view, setView] = useState<ViewType>('home');
@@ -23,7 +27,9 @@ const App: React.FC = () => {
     detail: '产品详情 - Upcore 溯洄',
     support: '服务支持 - Upcore 溯洄',
     about: '关于我们 - Upcore 溯洄',
-    contact: '联系我们 - Upcore 溯洄'
+    app: '溯洄APP - Upcore 溯洄',
+    privacy: '隐私政策 - Upcore 溯洄'
+
   };
 
   // 更新页面标题
@@ -44,7 +50,7 @@ const App: React.FC = () => {
         setSelectedProduct(productName);
       }
       setTransitioning(false);
-    }, 300);
+    }, 600);
   };
 
   const renderView = () => {
@@ -52,11 +58,14 @@ const App: React.FC = () => {
       case 'detail':
         return <DetailPage onBack={() => navigateTo('home')} productName={selectedProduct} />;
       case 'support':
-        return <InfoPage type="support" onBack={() => navigateTo('home')} />;
+        return <InfoPage type="support" onBack={() => navigateTo('home')} onNavigate={navigateTo} />;
       case 'about':
-        return <InfoPage type="about" onBack={() => navigateTo('home')} />;
-      case 'contact':
-        return <InfoPage type="contact" onBack={() => navigateTo('home')} />;
+        return <InfoPage type="about" onBack={() => navigateTo('home')} onNavigate={navigateTo} />;
+      case 'app':
+        return <AppPage onNavigate={navigateTo} />;
+      case 'privacy':
+        return <PrivacyPage onNavigate={navigateTo} />;
+
       default:
         return (
           <>
@@ -67,25 +76,30 @@ const App: React.FC = () => {
             <AppleStyleProductDisplay onNavigate={navigateTo} />
             {/* 奖项与认可和用户评价区块 - 全新设计 */}
             <TestimonialAwards />
+
           </>
         );
     }
   };
 
+
+
   return (
-    <div className="min-h-screen flex flex-col bg-white">
-      {/* 仅在首页显示导航栏，其他页面使用自身的导航 */}
-      {view === 'home' && <Navbar onNavigate={navigateTo} />}
-      <main 
-        className={`transition-opacity duration-300 ease-in-out ${
-          transitioning ? 'opacity-0' : 'opacity-100'
-        }`}
-      >
-        {renderView()}
-      </main>
-      {/* 仅在首页显示页脚 */}
-      {view === 'home' && <Footer onNavigate={navigateTo} />}
-    </div>
+    <LanguageProvider>
+      <div className="min-h-screen flex flex-col bg-white overflow-y-auto scroll-snap-type y mandatory">
+        {/* 仅在首页显示导航栏，其他页面使用自身的导航 */}
+        {view === 'home' && <Navbar onNavigate={navigateTo} currentView={view} />}
+        <main 
+          className={`transition-all duration-600 ease-in-out transform ${
+            transitioning ? 'opacity-0 translate-y-10 scale-98' : 'opacity-100 translate-y-0 scale-100'
+          }`}
+        >
+          {renderView()}
+        </main>
+        {/* 仅在首页显示页脚 */}
+        {view === 'home' && <Footer onNavigate={navigateTo} />}
+      </div>
+    </LanguageProvider>
   );
 };
 

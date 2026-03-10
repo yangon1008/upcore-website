@@ -1,30 +1,34 @@
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { ArrowRight } from 'lucide-react';
 import { ViewType } from '../App';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface ProductGridProps {
   onNavigate: (view: ViewType) => void;
 }
 
 const ProductGrid: React.FC<ProductGridProps> = ({ onNavigate }) => {
-  const products = [
+  const { t, language } = useLanguage();
+  
+  // 产品数据 - 使用useMemo确保语言变化时重新计算
+  const products = useMemo(() => [
     {
-      name: "扫振 SE",
-      desc: "为你开启专业口腔护理的第一支牙刷",
+      name: t('products.se.name'),
+      desc: t('products.se.desc'),
       img: "https://picsum.photos/seed/se-pro/800/800",
       color: "bg-[#F5F5F7]",
       gradient: "from-blue-600 to-purple-600"
     },
     {
-      name: "Swift 4",
-      badge: "旗舰版",
-      desc: "高速负离子，沙龙级护发体验",
+      name: t('products.swift.name'),
+      badge: t('products.swift.badge'),
+      desc: t('products.swift.desc'),
       img: "https://picsum.photos/seed/swift-4/800/800",
       color: "bg-[#FAFAFA]",
       gradient: "from-pink-500 to-orange-500"
     }
-  ];
+  ], [t, language]);
 
   const sectionRef = useRef<HTMLDivElement>(null);
   const [visibleProducts, setVisibleProducts] = useState<Set<number>>(new Set());
@@ -124,7 +128,7 @@ const ProductGrid: React.FC<ProductGridProps> = ({ onNavigate }) => {
                         active:scale-95 group
                       `}
                     >
-                      <span>立即购买</span>
+                      <span>{t('products.buyNow')}</span>
                       <ArrowRight 
                         size={16} 
                         className="group-hover:translate-x-1 transition-transform duration-300"
@@ -139,7 +143,7 @@ const ProductGrid: React.FC<ProductGridProps> = ({ onNavigate }) => {
                         group
                       "
                     >
-                      <span className="relative z-10 transition-all duration-300">进一步了解</span>
+                      <span className="relative z-10 transition-all duration-300">{t('products.learnMore')}</span>
                       <span className="
                         absolute bottom-0 left-0 w-0 h-1 bg-black
                         group-hover:w-full transition-all duration-500

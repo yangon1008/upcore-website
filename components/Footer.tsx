@@ -1,31 +1,14 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { ViewType } from '../App';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface FooterProps {
   onNavigate: (view: ViewType) => void;
 }
 
 const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
-  const columns = [
-    {
-      title: "热门产品",
-      links: ["扫振 i2 系列", "扫振 SE 系列", "Swift 4 电吹风", "LISSOME 洗碗机"]
-    },
-    {
-      title: "官方渠道",
-      links: ["溯洄商城", "天猫旗舰店", "京东旗舰店"]
-    },
-    {
-      title: "服务支持",
-      links: ["售后政策", "防伪查询", "帮助中心", "软件下载", "联系我们"]
-    },
-    {
-      title: "关于溯洄",
-      links: ["品牌故事", "加入我们", "全球业务", "可持续发展"]
-    }
-  ];
-
+  const { t } = useLanguage();
   const footerRef = useRef<HTMLDivElement>(null);
   const [isVisible, setIsVisible] = useState(false);
 
@@ -54,13 +37,36 @@ const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
     };
   }, []);
 
+  // 页脚菜单项
+  const columns = [
+    {
+      title: t('footer.sections.products'),
+      links: [t('footer.products.i2'), t('footer.products.se'), t('footer.products.swift'), t('footer.products.lissome')]
+    },
+    {
+      title: t('footer.sections.channels'),
+      links: [t('footer.channels.shop'), t('footer.channels.tmall'), t('footer.channels.jd')]
+    },
+    {
+      title: t('footer.sections.services'),
+      links: [t('footer.services.policy'), t('footer.services.authentic'), t('footer.services.help'), t('footer.services.download')]
+    },
+    {
+      title: t('footer.sections.about'),
+      links: [t('footer.aboutLinks.story'), t('footer.aboutLinks.join'), t('footer.aboutLinks.global'), t('footer.aboutLinks.sustainable')]
+    }
+  ];
+
   // Logic to map footer link strings to their corresponding application views
   const handleLinkClick = (link: string) => {
-    if (link === '联系我们') onNavigate('contact');
-    else if (link === '品牌故事' || link === '关于溯洄') onNavigate('about');
-    else if (link === '服务支持' || link === '帮助中心' || link === '售后政策') onNavigate('support');
-    else if (link === '溯洄商城') onNavigate('shop');
-    else if (link === '扫振 i2 系列' || link === '扫振 SE 系列' || link === 'Swift 4 电吹风' || link === 'LISSOME 洗碗机') onNavigate('detail');
+    if (link === t('footer.aboutLinks.story') || link === t('footer.sections.about')) onNavigate('about');
+    else if (link === t('footer.sections.services') || link === t('footer.services.help') || link === t('footer.services.policy')) onNavigate('support');
+    else if (link === t('footer.channels.shop')) onNavigate('shop');
+    else if (link === t('footer.products.i2') || link === t('footer.products.se') || link === t('footer.products.swift') || link === t('footer.products.lissome')) onNavigate('detail');
+    else if (link === t('footer.services.download')) {
+      // 点击软件下载，跳转到App下载页面
+      onNavigate('app');
+    }
     else onNavigate('home');
   };
 
@@ -74,7 +80,7 @@ const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
         >
           {/* Brand Info */}
           <div className="lg:col-span-4 space-y-10">
-            <div className="flex items-center justify-center lg:justify-start">
+            <div className="flex items-center justify-center lg:justify-start cursor-pointer group" onClick={() => onNavigate('home')}>
               <img
                 src="/images/logo.png"
                 alt="Upcore 溯洄"
@@ -84,13 +90,15 @@ const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
                 "
                 style={{ mixBlendMode: 'lighten' }}
               />
+              {/* 点击波纹效果 */}
+              <div className="absolute inset-0 -m-4 rounded-full bg-white/10 scale-0 group-active:scale-100 transition-transform duration-500 pointer-events-none"></div>
             </div>
             <div className="space-y-4 max-w-sm">
               <p className="text-lg text-white font-medium transition-all duration-300 hover:text-gray-200">
-                创新，只为更好的你。
+                {t('footer.slogan')}
               </p>
               <p className="text-sm leading-relaxed transition-all duration-300 hover:text-gray-500">
-                溯洄成立于2021年，致力于通过科技创新重新定义个人护理与家庭生活方式。每一个产品都是对美学与功能的极致追求。
+                {t('footer.intro')}
               </p>
             </div>
             
@@ -108,7 +116,7 @@ const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
                     group relative overflow-hidden
                   "
                 >
-                  <span className="relative z-10">{social}</span>
+                  {social}
                   {/* 背景发光效果 */}
                   <span className="
                     absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-500 
@@ -156,7 +164,7 @@ const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
                           group
                         "
                       >
-                        <span className="relative z-10">{link}</span>
+                        {link}
                         {/* 下划线动画 */}
                         <span className="
                           absolute bottom-0 left-0 w-0 h-0.5 bg-white
@@ -180,28 +188,47 @@ const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
           hover:opacity-60
         ">
           <div className="flex flex-wrap items-center justify-center gap-8">
-            <p>© 2025 UPCORE TECHNOLOGY</p>
-            {['隐私政策', '法律声明', '粤ICP备12345678号'].map((item, i) => (
-              <button 
-                key={i}
-                onClick={() => onNavigate('home')}
-                className="
-                  hover:text-white transition-all duration-300 
-                  relative
-                  group
-                "
-              >
-                <span>{item}</span>
-                <span className="
-                  absolute bottom-0 left-0 w-0 h-0.5 bg-white
-                  group-hover:w-full transition-all duration-300
-                "></span>
-              </button>
+            <p>{t('footer.copyright')}</p>
+            {[t('footer.bottomLinks.privacy'), t('footer.bottomLinks.legal'), t('footer.bottomLinks.icp')].map((item, i) => (
+              item === t('footer.bottomLinks.privacy') ? (
+                <button 
+                  key={i}
+                  onClick={() => onNavigate('privacy')}
+                  className="
+                    hover:text-white transition-all duration-300 
+                    relative
+                    group
+                    cursor-pointer
+                  "
+                >
+                  {item}
+                  <span className="
+                    absolute bottom-0 left-0 w-0 h-0.5 bg-white
+                    group-hover:w-full transition-all duration-300
+                  "></span>
+                </button>
+              ) : (
+                <button 
+                  key={i}
+                  onClick={() => onNavigate('home')}
+                  className="
+                    hover:text-white transition-all duration-300 
+                    relative
+                    group
+                  "
+                >
+                  {item}
+                  <span className="
+                    absolute bottom-0 left-0 w-0 h-0.5 bg-white
+                    group-hover:w-full transition-all duration-300
+                  "></span>
+                </button>
+              )
             ))}
           </div>
           
           <div className="flex items-center space-x-6">
-            {['CHINA (CN)', 'ENGLISH'].map((lang, i) => (
+            {[t('footer.languages.china'), t('footer.languages.english')].map((lang, i) => (
               <React.Fragment key={i}>
                 <button 
                   onClick={() => onNavigate('home')}
@@ -210,7 +237,7 @@ const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
                     group
                   "
                 >
-                  <span>{lang}</span>
+                  {lang}
                   <span className="
                     absolute bottom-0 left-0 w-0 h-0.5 bg-white
                     group-hover:w-full transition-all duration-300

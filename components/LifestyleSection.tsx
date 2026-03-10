@@ -58,41 +58,33 @@ const LifestyleSection: React.FC = () => {
   return (
     <section 
       ref={sectionRef}
-      className="w-full bg-white py-20 overflow-hidden"
+      className="w-full bg-white py-20 overflow-hidden scroll-snap-align start scroll-snap-stop always"
     >
       <div className="container mx-auto px-6">
         <div 
-          className="relative rounded-[40px] overflow-hidden shadow-2xl transition-all duration-700 hover:shadow-3xl group"
-          onMouseEnter={() => setIsHovered(true)}
-          onMouseLeave={() => setIsHovered(false)}
+          className="relative rounded-[40px] overflow-hidden shadow-2xl transition-all duration-700 group"
         >
-          {/* 视差图片 - 黑白平滑过渡效果 */}
+          {/* 视频背景 - 类似AirPods 4设计 */}
           <div className="relative h-[600px] md:h-[800px] overflow-hidden">
-            <img 
+            {/* 视频元素 */}
+            <video 
               ref={imgRef}
-              src="https://picsum.photos/seed/usage/1920/1080" 
-              alt="Lifestyle Usage" 
-              className={`w-full h-full object-cover transition-all duration-1000 ease-out grayscale(${isHovered ? 0 : 100}) brightness(${isHovered ? 1 : 0.9})`}
+              src="/vedio/home1.mp4" 
+              alt="Lifestyle Video" 
+              className="w-full h-full object-cover"
+              autoPlay
+              muted
+              loop
+              playsInline
               style={{ 
                 opacity: isVisible ? 1 : 0,
-                transform: `translateY(0) scale(${isVisible ? 1 : 0.95})`
               }}
             />
             
-            {/* 玻璃拟态覆盖层 - 悬停时显示 */}
-            <div className={`absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 flex items-end`}>
-              <div className="p-10 backdrop-blur-sm bg-white/10 border-t border-white/20 w-full">
-                <h2 className="text-4xl font-bold text-white mb-2">生活方式</h2>
-                <p className="text-white/80 text-lg">体验科技与生活的完美融合</p>
-              </div>
-            </div>
-            
-            {/* 动态光晕效果 */}
-            <div className="absolute inset-0 bg-blue-500/10 blur-[100px] opacity-0 group-hover:opacity-50 transition-opacity duration-1000"></div>
           </div>
           
-          {/* 装饰性边框 - 玻璃拟态效果 */}
-          <div className="absolute inset-0 border-2 border-white/20 rounded-[40px] pointer-events-none backdrop-blur-sm"></div>
+          {/* 装饰性边框 */}
+          <div className="absolute inset-0 border-2 border-white/10 rounded-[40px] pointer-events-none"></div>
         </div>
       </div>
     </section>

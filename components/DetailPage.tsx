@@ -24,13 +24,23 @@ const DetailPage: React.FC<DetailPageProps> = ({ onBack, productName }) => {
     <div className="min-h-screen bg-white text-black font-sans">
       <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100 px-6 py-4 transition-all duration-300">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <button 
-            onClick={onBack} 
-            className="flex items-center gap-2 text-gray-500 hover:text-black transition-all duration-300 font-medium group"
-          >
-            <ArrowLeft size={20} className="group-hover:-translate-x-1 transition-transform duration-300" />
-            返回首页
-          </button>
+          {/* Logo */}
+          <div className="flex items-center gap-4">
+            <img 
+              src="/images/logo.png" 
+              alt="Upcore 溯洄" 
+              className="h-8 w-auto"
+              onClick={onBack}
+              style={{ cursor: 'pointer' }}
+            />
+            <button 
+              onClick={onBack} 
+              className="flex items-center gap-2 text-gray-500 hover:text-black transition-all duration-300 font-medium group"
+            >
+              <ArrowLeft size={20} className="group-hover:-translate-x-1 transition-transform duration-300" />
+              返回首页
+            </button>
+          </div>
           <button 
             onClick={handleBuy}
             disabled={isBuying}

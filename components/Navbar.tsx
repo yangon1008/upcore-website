@@ -2,15 +2,19 @@
 import React, { useState, useEffect } from 'react';
 import { Search, ShoppingCart, Menu, X } from 'lucide-react';
 import { ViewType } from '../App';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface NavbarProps {
   onNavigate: (view: ViewType) => void;
+  initialBg?: 'dark' | 'light';
+  currentView?: ViewType;
 }
 
-const Navbar: React.FC<NavbarProps> = ({ onNavigate }) => {
+const Navbar: React.FC<NavbarProps> = ({ onNavigate, initialBg = 'light', currentView = 'home' }) => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [currentView, setCurrentView] = useState<ViewType>('home');
+  const { language, toggleLanguage, t } = useLanguage();
+  const isChinese = language === 'zh';
 
   // 滚动监听 - 增强的过渡效果
   useEffect(() => {
@@ -24,24 +28,28 @@ const Navbar: React.FC<NavbarProps> = ({ onNavigate }) => {
 
   // 处理导航点击
   const handleNavigate = (view: ViewType) => {
-    setCurrentView(view);
     setIsMenuOpen(false);
     onNavigate(view);
   };
 
-  // 导航菜单数据
-  const navItems = [
-    { label: '服务支持', view: 'support' as ViewType },
-    { label: '联系我们', view: 'contact' as ViewType },
-    { label: '关于溯洄', view: 'about' as ViewType }
-  ];
+  // 导航菜单数据 - 支持中英文切换
+  const getNavItems = () => {
+    return [
+      { label: t('nav.home'), view: 'home' as ViewType },
+      { label: t('nav.support'), view: 'support' as ViewType },
+      { label: t('nav.about'), view: 'about' as ViewType }
+    ];
+  };
+  
+  // 获取当前语言的导航项
+  const navItems = getNavItems();
 
   return (
     <nav 
       className={`
         fixed top-0 left-0 right-0 z-50 transition-all duration-500 ease-out 
         px-4 sm:px-6 md:px-12 py-3 sm:py-4 md:py-6 backdrop-blur-3xl
-        ${isScrolled ? 
+        ${initialBg === 'dark' || isScrolled ? 
           'bg-black/80 border-b border-white/10 shadow-lg' : 
           'bg-transparent border-b-0 shadow-none'}
       `}
@@ -77,7 +85,7 @@ const Navbar: React.FC<NavbarProps> = ({ onNavigate }) => {
                 ${currentView === item.view ? 'text-white' : 'hover:text-white'}
               `}
             >
-              <span>{item.label}</span>
+              {item.label}
               {/* 下划线动画 */}
               <span className={`
                 absolute bottom-0 left-0 h-0.5 bg-white
@@ -96,16 +104,36 @@ const Navbar: React.FC<NavbarProps> = ({ onNavigate }) => {
 
         {/* 右侧功能按钮 */}
         <div className="flex items-center space-x-4 sm:space-x-6 text-white">
-          {/* 搜索按钮 - 悬停动画 */}
+          {/* 语言切换按钮 */}
           <button 
-            onClick={() => handleNavigate('support')}
+            onClick={toggleLanguage}
             className="
-              p-2 sm:p-3 rounded-full hover:bg-white/10 transition-all duration-300
-              group
-              lg:flex items-center justify-center
+              px-3 py-1 sm:px-4 sm:py-2 rounded-full hover:bg-white/10 transition-all duration-300
+              group flex items-center justify-center
+              lg:flex
             "
-            aria-label="搜索"
+            aria-label="切换语言"
           >
+            <span className="text-sm sm:text-base font-medium">
+              {isChinese ? 'EN' : '中文'}
+            </span>
+            <span className="
+              absolute inset-0 -m-1 rounded-full bg-white/10 opacity-0
+              group-hover:opacity-100 transition-opacity duration-300
+              pointer-events-none
+            "></span>
+          </button>
+          
+          {/* 搜索按钮 - 悬停动画 */}
+        <button 
+          onClick={() => handleNavigate('support')}
+          className="
+            p-2 sm:p-3 rounded-full hover:bg-white/10 transition-all duration-300
+            group
+            lg:flex items-center justify-center
+          "
+          aria-label="搜索"
+        >
             <Search 
               size={18} sm:size={20} 
               strokeWidth={2} 
@@ -128,7 +156,7 @@ const Navbar: React.FC<NavbarProps> = ({ onNavigate }) => {
               fill="currentColor" 
               className="group-hover:rotate-12 transition-transform duration-300"
             />
-            <span className="hidden sm:inline">商城</span>
+            <span className="hidden sm:inline">{t('nav.shop')}</span>
             {/* 按钮发光效果 */}
             <span className="
               absolute inset-0 rounded-full bg-white/30 blur-sm opacity-0
