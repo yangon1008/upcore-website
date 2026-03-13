@@ -69,7 +69,7 @@ const LifestyleSection: React.FC = () => {
             {/* 视频元素 */}
             <video 
               ref={imgRef}
-              src="/vedio/home1.mp4" 
+              src="/vedio/brushtooth.mp4" 
               alt="Lifestyle Video" 
               className="w-full h-full object-cover"
               autoPlay

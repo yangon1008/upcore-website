@@ -60,7 +60,7 @@ const FeatureGrid: React.FC<FeatureGridProps> = ({ onNavigate }) => {
         <div className="mb-20 space-y-4">
           {/* 渐变文字 - 滚动触发 */}
           <h2 className="text-5xl md:text-7xl font-bold tracking-tighter bg-gradient-to-r from-gray-900 via-gray-700 to-gray-900 bg-clip-text text-transparent animate-gradient-shift">
-            极简。更是不凡。
+            极简，更是不凡
           </h2>
           <p className="text-xl text-gray-400 max-w-2xl font-light">
             LISSOME R1 台面式洗碗机，为现代厨房而生。

@@ -18,22 +18,19 @@ export const translations = {
     },
     // Hero部分
     hero: {
-      flagship: 'Flagship Release',
-      professional: '专业护理',
-      smart: '智能科技',
+      flagship: '旗舰新品',
+      professional: '旗舰新品',
+      smart: '旗舰新品',
       hair: '护发科技',
-      title1: '扫振',
-      subtitle1: 'i2 系列',
-      description1: '五种大师级机身材质，配合五款专研刷头。<br/>开启口腔护理的‘扫振’时代。',
-      title2: '专研',
-      subtitle2: '刷头系列',
+      title1: 'AI智能牙刷',
+      subtitle1: '开启口腔清洁3.0',
+      description1: '五种大师级机身材质，配合五款专研刷头。<br/>开启口腔护理的扫振时代。',
+      title2: 'AI智能牙刷',
+      subtitle2: '开启口腔清洁3.0',
       description2: '三款专业刷头，针对不同口腔需求设计，提供定制化护理体验。',
-      title3: '扫振',
-      subtitle3: 'i2 旗舰款',
+      title3: 'AI智能牙刷',
+      subtitle3: '开启口腔清洁3.0',
       description3: '创新扫振技术，智能感应系统，为您带来前所未有的刷牙体验。',
-      title4: 'Swift',
-      subtitle4: '4 吹风机',
-      description4: '高速负离子技术，沙龙级护发体验，快速干发，减少热损伤。',
       learnMore: '进一步了解',
       buyNow: '立即购买'
     },
@@ -60,7 +57,10 @@ export const translations = {
         onlineDesc: '周一至周日 9:00-21:00 在线客服',
         phone: '热线服务',
         phoneDesc: '周一至周日 9:00-21:00 18154771933'
-      }
+      },
+      applyNow: '申请服务',
+      contactOnline: '联系在线客服',
+      morePhone: '更多客服电话'
     },
     // 产品信息
     products: {
@@ -125,6 +125,7 @@ export const translations = {
       description: '让用户在使用产品时体验到舒适便捷的功能，回到生活的本质，让科技服务于生活本身。',
       focus: '专注研发 · 技术 · 专业的高端洗护品类服务',
       values: {
+        title: '核心价值观',
         self: '自产自研',
         selfDesc: '我们拥有独立的研发团队，结合专业的人员与设备，利用前沿科技为用户打造高质量的产品。',
         detail: '专注细节',
@@ -147,7 +148,7 @@ export const translations = {
     },
     // LISSOME洗碗机
     lissome: {
-      slogan: '极简。更是不凡。',
+      slogan: '极简，更是不凡',
       title: 'LISSOME R1 台面式洗碗机，为现代厨房而生。',
       explore: '探索我们的产品',
       description: '创新科技，卓越设计，为您带来无与伦比的使用体验',
@@ -246,18 +247,15 @@ export const translations = {
       professional: 'Professional Care',
       smart: 'Smart Technology',
       hair: 'Hair Care Tech',
-      title1: 'SweepVibe',
-      subtitle1: 'i2 Series',
+      title1: 'AI Smart Toothbrush',
+      subtitle1: 'Opening Oral Cleaning 3.0',
       description1: 'Five master-level body materials, paired with five specialized brush heads.<br/>Opening a new era of "sweep-vibration" in oral care.',
-      title2: 'Specialized',
-      subtitle2: 'Brush Head Series',
+      title2: 'AI Smart Toothbrush',
+      subtitle2: 'Opening Oral Cleaning 3.0',
       description2: 'Three professional brush heads designed for different oral needs, providing customized care experience.',
-      title3: 'SweepVibe',
-      subtitle3: 'i2 Flagship',
+      title3: 'AI Smart Toothbrush',
+      subtitle3: 'Opening Oral Cleaning 3.0',
       description3: 'Innovative sweep-vibration technology, intelligent sensing system, bringing you an unprecedented brushing experience.',
-      title4: 'Swift',
-      subtitle4: '4 Hair Dryer',
-      description4: 'High-speed negative ion technology, salon-level hair care experience, quick drying, reducing heat damage.',
       learnMore: 'Learn More',
       buyNow: 'Buy Now'
     },
@@ -352,6 +350,7 @@ export const translations = {
       description: 'Let users experience comfortable and convenient functions when using products, returning to the essence of life, making technology serve life itself.',
       focus: 'Focus on R&D · Technology · Professional high-end care product services',
       values: {
+        title: 'Core Values',
         self: 'Self-developed',
         selfDesc: 'We have an independent R&D team, combining professional personnel and equipment, using cutting-edge technology to create high-quality products for users.',
         detail: 'Focus on Details',
@@ -374,7 +373,7 @@ export const translations = {
     },
     // LISSOME洗碗机
     lissome: {
-      slogan: 'Minimalism. Extraordinary.',
+      slogan: 'Minimalism Extraordinary',
       title: 'LISSOME R1 Countertop Dishwasher, Born for Modern Kitchens.',
       explore: 'Explore Our Products',
       description: 'Innovative Technology, Exceptional Design, Bringing You an Unparalleled User Experience',

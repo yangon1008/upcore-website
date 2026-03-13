@@ -25,9 +25,9 @@ const Hero: React.FC<HeroProps> = ({ onNavigate }) => {
 
   // Product images
   const productImages = [
-    "/images/products/吹风机.png",
-    "/images/products/耳机.png",
-    "/images/products/swift.png"
+    "/images/products/toothbrush1.png",
+    "/images/products/toothbrush2.png",
+    "/images/products/toothbrush3.png"
   ];
 
   // Slide content corresponding to each image
@@ -166,7 +166,7 @@ const Hero: React.FC<HeroProps> = ({ onNavigate }) => {
 
       <div className="container mx-auto px-6 md:px-12 relative z-10 grid grid-cols-1 lg:grid-cols-12 items-center gap-0">
         {/* Left content with animation */}
-        <div className={`lg:col-span-5 text-white space-y-10 order-2 lg:order-1 pt-12 lg:pt-0 transition-all duration-700 ease-out ${isTransitioning ? 'opacity-0 translate-x-[-20px]' : 'opacity-100 translate-x-0'}`} style={{ transitionDelay: '200ms' }}>
+        <div className={`lg:col-span-6 text-white space-y-10 order-2 lg:order-1 pt-12 lg:pt-0 transition-all duration-700 ease-out ${isTransitioning ? 'opacity-0 translate-x-[-20px]' : 'opacity-100 translate-x-0'}`} style={{ transitionDelay: '200ms' }}>
           <div className="space-y-6">
             {/* 动态渐变标签 */}
             <div className="inline-block px-4 py-1 rounded-full border border-blue-500/30 bg-blue-500/10 text-blue-400 text-xs font-bold tracking-[0.2em] uppercase animate-pulse-slow">
@@ -174,9 +174,9 @@ const Hero: React.FC<HeroProps> = ({ onNavigate }) => {
             </div>
             
             {/* 渐变文字 - 动态色彩切换 */}
-            <h1 className="text-7xl md:text-9xl font-extrabold tracking-tighter leading-[0.9] animate-gradient-text">
-              {currentContent.title} <br/>
-              <span className="text-transparent bg-clip-text bg-gradient-to-br from-white via-gray-200 to-gray-500 transition-all duration-5000 ease-in-out">
+            <h1 className="text-5xl md:text-7xl font-extrabold tracking-tighter leading-[1.2] animate-gradient-text overflow-visible">
+              {currentContent.title}
+              <span className="block mt-2 whitespace-nowrap text-transparent bg-clip-text bg-gradient-to-br from-white via-gray-200 to-gray-500 transition-all duration-5000 ease-in-out pb-2">
                 {currentContent.subtitle}
               </span>
             </h1>
@@ -206,7 +206,7 @@ const Hero: React.FC<HeroProps> = ({ onNavigate }) => {
         </div>
 
         {/* Right carousel with cool transition effects */}
-        <div className="lg:col-span-7 relative flex justify-center lg:justify-end items-center order-1 lg:order-2 h-full py-20 lg:py-0">
+        <div className="lg:col-span-6 relative flex justify-center lg:justify-end items-center order-1 lg:order-2 h-full py-20 lg:py-0">
           <div className="relative group w-full max-w-[600px]">
             
             {/* Carousel container */}
