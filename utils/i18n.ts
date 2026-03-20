@@ -24,13 +24,13 @@ export const translations = {
       hair: '护发科技',
       title1: 'AI智能牙刷',
       subtitle1: '开启口腔清洁3.0',
-      description1: '五种大师级机身材质，配合五款专研刷头。<br/>开启口腔护理的扫振时代。',
+      description1: '懂刷牙，更懂健康。',
       title2: 'AI智能牙刷',
       subtitle2: '开启口腔清洁3.0',
-      description2: '三款专业刷头，针对不同口腔需求设计，提供定制化护理体验。',
+      description2: '30秒全自动清洁，更是你每天的口腔医生。',
       title3: 'AI智能牙刷',
       subtitle3: '开启口腔清洁3.0',
-      description3: '创新扫振技术，智能感应系统，为您带来前所未有的刷牙体验。',
+      description3: '每一次刷牙，都是一次口腔体检',
       learnMore: '进一步了解',
       buyNow: '立即购买'
     },
@@ -67,8 +67,8 @@ export const translations = {
       title: '探索我们的产品',
       description: '创新科技，卓越设计，为您带来无与伦比的使用体验',
       se: {
-        name: '扫振 SE',
-        desc: '为你开启专业口腔护理的第一支牙刷',
+        name: 'AI 智能牙刷',
+        desc: '30秒全自动清洁，更是你每天的口腔医生。',
         price: '¥ 299',
         features: [
           '智能感应技术',
@@ -88,14 +88,14 @@ export const translations = {
         }
       },
       swift: {
-        name: 'Swift 4',
-        desc: '高速负离子，沙龙级护发体验',
+        name: 'AI 智能牙刷',
+        desc: '每一颗牙齿，都值得被读懂。',
         price: '¥ 1,299',
         badge: '旗舰版',
         features: [
-          '高速负离子技术',
+          'AI智能分析',
           '5档温度调节',
-          '360°旋转风嘴',
+          '360°旋转刷头',
           '智能恒温系统'
         ]
       },
@@ -249,13 +249,13 @@ export const translations = {
       hair: 'Hair Care Tech',
       title1: 'AI Smart Toothbrush',
       subtitle1: 'Opening Oral Cleaning 3.0',
-      description1: 'Five master-level body materials, paired with five specialized brush heads.<br/>Opening a new era of "sweep-vibration" in oral care.',
+      description1: 'Know Brushing. Know Health.',
       title2: 'AI Smart Toothbrush',
       subtitle2: 'Opening Oral Cleaning 3.0',
-      description2: 'Three professional brush heads designed for different oral needs, providing customized care experience.',
+      description2: '30 second fully automatic cleaning is your daily dentist.',
       title3: 'AI Smart Toothbrush',
       subtitle3: 'Opening Oral Cleaning 3.0',
-      description3: 'Innovative sweep-vibration technology, intelligent sensing system, bringing you an unprecedented brushing experience.',
+      description3: 'Every time you brush your teeth, it\'s a dental check-uptime.',
       learnMore: 'Learn More',
       buyNow: 'Buy Now'
     },
@@ -292,8 +292,8 @@ export const translations = {
       title: 'Explore Our Products',
       description: 'Innovative technology, exceptional design, bringing you an unparalleled user experience',
       se: {
-        name: 'SweepVibe SE',
-        desc: 'Your first professional oral care toothbrush',
+        name: 'AI Smart Toothbrush',
+        desc: '30 second fully automatic cleaning is your daily dentist.',
         price: '¥ 299',
         features: [
           'Intelligent sensing technology',
@@ -313,14 +313,14 @@ export const translations = {
         }
       },
       swift: {
-        name: 'Swift 4',
-        desc: 'High-speed negative ions, salon-level hair care experience',
+        name: 'AI Smart Toothbrush',
+        desc: 'Every tooth is worth reading.',
         price: '¥ 1,299',
         badge: 'Flagship',
         features: [
-          'High-speed negative ion technology',
+          'AI intelligent analysis',
           '5 temperature settings',
-          '360° rotating nozzle',
+          '360° rotating brush head',
           'Intelligent constant temperature system'
         ]
       },

@@ -5,7 +5,7 @@ import { ViewType } from '../App';
 import { useLanguage } from '../contexts/LanguageContext';
 
 interface NavbarProps {
-  onNavigate: (view: ViewType) => void;
+  onNavigate: any;
   initialBg?: 'dark' | 'light';
   currentView?: ViewType;
 }

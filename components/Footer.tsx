@@ -4,7 +4,7 @@ import { ViewType } from '../App';
 import { useLanguage } from '../contexts/LanguageContext';
 
 interface FooterProps {
-  onNavigate: (view: ViewType) => void;
+  onNavigate: any;
 }
 
 const Footer: React.FC<FooterProps> = ({ onNavigate }) => {

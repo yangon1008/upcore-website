@@ -3,12 +3,10 @@ import React, { useEffect, useRef, useState } from 'react';
 import { ViewType } from '../App';
 
 interface FeatureGridProps {
-  onNavigate: (view: ViewType) => void;
+  onNavigate: any;
 }
 
 interface FeatureItem {
-  title: string;
-  desc: string;
   img: string;
   span: string;
   bg: string;
@@ -20,13 +18,13 @@ interface FeatureItem {
 
 const FeatureGrid: React.FC<FeatureGridProps> = ({ onNavigate }) => {
   const features: FeatureItem[] = [
-    { title: "Auto-Released Dry", desc: "More Energy-saving", img: "/images/tech/Rectangle 6.jpg", span: "md:col-span-1", bg: "bg-white" },
-    { title: "World's First", desc: "Sweeping Jet Technology", img: "/images/tech/Rectangle 7.jpg", span: "md:col-span-2", bg: "bg-white" },
-    { title: "Ultra-Slim Design", desc: "11.02 inch", img: "/images/tech/Rectangle 8.jpg", span: "md:col-span-1", bg: "bg-white" },
-    { title: "AI Wash", desc: "The Smart Way To Wash", img: "/images/tech/Rectangle 9.jpg", span: "md:col-span-1", bg: "bg-white" },
-    { title: "Quick Wash & Dry", desc: "Efficient Cleaning", img: "/images/tech/Rectangle 10.jpg", span: "md:col-span-1", bg: "bg-white" },
-    { title: "70% Water Savings", desc: "Eco-friendly", img: "/images/tech/Rectangle 11.jpg", span: "md:col-span-1", bg: "bg-white" },
-    { title: "Healthier", desc: "UV Protection", img: "/images/tech/Rectangle 12.jpg", span: "md:col-span-1", bg: "bg-white" }
+    { img: "/images/tech/Rectangle 6.png", span: "md:col-span-1", bg: "bg-white" },
+    { img: "/images/tech/Rectangle 7.png", span: "md:col-span-2", bg: "bg-white" },
+    { img: "/images/tech/Rectangle 8.png", span: "md:col-span-1", bg: "bg-white" },
+    { img: "/images/tech/Rectangle 9.jpg", span: "md:col-span-1", bg: "bg-white" },
+    { img: "/images/tech/Rectangle 10.png", span: "md:col-span-1", bg: "bg-white" },
+    { img: "/images/tech/Rectangle 11.jpg", span: "md:col-span-1", bg: "bg-white" },
+    { img: "/images/tech/Rectangle 12.png", span: "md:col-span-1", bg: "bg-white" }
   ];
 
   const gridRef = useRef<HTMLDivElement>(null);
@@ -89,26 +87,12 @@ const FeatureGrid: React.FC<FeatureGridProps> = ({ onNavigate }) => {
                 }}
               >
                 {/* 图片容器 */}
-                <div className="w-full h-64 flex items-center justify-center">
+                <div className="w-full h-81 flex items-center justify-center">
                   {/* 图片 */}
                   <img 
                     src={f.img} 
-                    alt={f.title} 
                     className="w-full h-full object-contain"
                   />
-                </div>
-                
-                {/* 文字内容 */}
-                <div className="p-4 text-center">
-                  {/* 标题 */}
-                  <h3 className="text-lg font-bold text-gray-900">
-                    {f.title}
-                  </h3>
-                  
-                  {/* 描述文字 */}
-                  <p className="text-sm text-gray-500 mt-1">
-                    {f.desc}
-                  </p>
                 </div>
               </div>
             );

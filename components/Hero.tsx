@@ -5,7 +5,7 @@ import { ViewType } from '../App';
 import { useLanguage } from '../contexts/LanguageContext';
 
 interface HeroProps {
-  onNavigate: (view: ViewType) => void;
+  onNavigate: any;
 }
 
 interface SlideContent {
