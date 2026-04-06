@@ -189,8 +189,8 @@ export const translations = {
       },
       // 产品链接
       products: {
-        i2: '扫振 i2 系列',
-        se: '扫振 SE 系列',
+        i2: 'AI 智能牙刷',
+        se: 'AI 智能牙刷',
         swift: 'Swift 4 电吹风',
         lissome: 'LISSOME 洗碗机'
       },
@@ -414,8 +414,8 @@ export const translations = {
       },
       // 产品链接
       products: {
-        i2: 'SweepVibe i2 Series',
-        se: 'SweepVibe SE Series',
+        i2: 'AI Smart Toothbrush',
+        se: 'AI Smart Toothbrush',
         swift: 'Swift 4 Hair Dryer',
         lissome: 'LISSOME Dishwasher'
       },

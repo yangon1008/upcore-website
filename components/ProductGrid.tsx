@@ -14,7 +14,7 @@ const ProductGrid: React.FC&lt;ProductGridProps&gt; = ({ onNavigate }) =&gt; {
     {
       name: t('products.se.name'),
       desc: t('products.se.desc'),
-      img: "/images/tech/Product1.png",
+      img: "/images/tech/Product1.jpg",
       color: "bg-[#F5F5F7]",
       gradient: "from-blue-600 to-purple-600"
     },

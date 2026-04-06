@@ -23,7 +23,7 @@ const App: React.FC = () => {
 
   // 页面标题映射
   const pageTitles: Record<ViewType, string> = {
-    home: 'Upcore 溯洄 - 科技改变生活',
+    home: '溯洄 - 科技改变生活',
     detail: '产品详情 - Upcore 溯洄',
     support: '服务支持 - Upcore 溯洄',
     about: '关于我们 - Upcore 溯洄',
