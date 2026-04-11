@@ -1,8 +1,9 @@
 
 import React, { useState, useEffect } from 'react';
-import { Search, ShoppingCart, Menu, X } from 'lucide-react';
+import { Search, ShoppingCart, Menu, X, User } from 'lucide-react';
 import { ViewType } from '../App';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useAuth } from '../contexts/AuthContext';
 
 interface NavbarProps {
   onNavigate: any;
@@ -14,6 +15,7 @@ const Navbar: React.FC<NavbarProps> = ({ onNavigate, initialBg = 'light', curren
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { language, toggleLanguage, t } = useLanguage();
+  const { user } = useAuth();
   const isChinese = language === 'zh';
 
   // 滚动监听 - 增强的过渡效果
@@ -37,7 +39,8 @@ const Navbar: React.FC<NavbarProps> = ({ onNavigate, initialBg = 'light', curren
     return [
       { label: t('nav.home'), view: 'home' as ViewType },
       { label: t('nav.support'), view: 'support' as ViewType },
-      { label: t('nav.about'), view: 'about' as ViewType }
+      { label: t('nav.about'), view: 'about' as ViewType },
+      { label: t('nav.interview'), view: 'interview' as ViewType }
     ];
   };
   

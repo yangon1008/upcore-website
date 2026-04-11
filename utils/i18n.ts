@@ -14,7 +14,34 @@ export const translations = {
       shop: '商城',
       search: '搜索',
       menu: '菜单',
-      close: '关闭'
+      close: '关闭',
+      interview: '预约面试',
+      login: '管理员登录',
+      profile: '个人信息',
+      logout: '退出登录'
+    },
+    // 预约面试
+    interview: {
+      title: '预约面试',
+      adminTitle: '面试时间管理',
+      userTitle: '预约面试',
+      invitationCode: '邀请码',
+      inputCode: '请输入邀请码',
+      userInfo: '个人信息',
+      name: '姓名',
+      phone: '手机号',
+      email: '邮箱',
+      submit: '提交预约',
+      cancel: '取消预约',
+      success: '预约成功',
+      cancelSuccess: '已取消预约',
+      interviewer: '面试官',
+      timeSlot: '面试时段',
+      noSlots: '暂无可用时间段',
+      常驻时段: '常驻面试时段',
+      临时时段: '特定日期时段',
+      addSlot: '添加时段',
+      save: '保存设置'
     },
     // Hero部分
     hero: {
@@ -239,7 +266,34 @@ export const translations = {
       shop: 'Shop',
       search: 'Search',
       menu: 'Menu',
-      close: 'Close'
+      close: 'Close',
+      interview: 'Book Interview',
+      login: 'Admin Login',
+      profile: 'Profile',
+      logout: 'Logout'
+    },
+    // Interview
+    interview: {
+      title: 'Book Interview',
+      adminTitle: 'Manage Schedule',
+      userTitle: 'Book Interview',
+      invitationCode: 'Invitation Code',
+      inputCode: 'Please enter invitation code',
+      userInfo: 'Personal Info',
+      name: 'Name',
+      phone: 'Phone',
+      email: 'Email',
+      submit: 'Book Now',
+      cancel: 'Cancel Appointment',
+      success: 'Booking Successful',
+      cancelSuccess: 'Booking Cancelled',
+      interviewer: 'Interviewer',
+      timeSlot: 'Time Slot',
+      noSlots: 'No available slots',
+      常驻时段: 'Regular Slots',
+      临时时段: 'Specific Dates',
+      addSlot: 'Add Slot',
+      save: 'Save'
     },
     // Hero部分
     hero: {
