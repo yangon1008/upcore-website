@@ -72,9 +72,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     window.location.href = feishuService.getLoginUrl();
   };
 
-  const loginWithInvitationCode = async (code: string, userName: string, gender: string, age: string, phone: string) => {
+  const loginWithInvitationCode = async (code: string, userName: string) => {
     try {
-      const regularUser = await feishuService.loginWithInvitationCode(code, userName, gender, age, phone);
+      const regularUser = await feishuService.loginWithInvitationCode(code, userName);
       setUser(regularUser);
     } catch (err) {
       throw err;

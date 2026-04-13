@@ -258,7 +258,7 @@ router.post('/', async (req, res) => {
       console.log('开始创建飞书日程...');
       const event = await createFeishuEvent(
         token,
-        `面试-${regularUserName}`,
+        `面试-${regularUserName}-${jobPositionName || '未知岗位'}`,
         `${bookingDate}T${startTime}+08:00`,
         `${bookingDate}T${endTime}+08:00`,
         adminUserId,
@@ -334,8 +334,13 @@ router.get('/', async (req, res) => {
       query = `
         SELECT b.id, b.regular_user_name as regularUserName, b.booking_date as bookingDate,
                 b.start_time as startTime, b.end_time as endTime,
-                b.feishu_meeting_url as feishuMeetingUrl, b.status, b.created_at as createdAt
+                b.feishu_meeting_url as feishuMeetingUrl, b.status, b.created_at as createdAt,
+                i.used_by_gender as gender, i.used_by_age as age, i.used_by_phone as phone,
+                i.used_by_resume as resume, i.used_by_video as video,
+                i.used_by_website as website, i.used_by_introduction as introduction,
+                b.job_position_name as jobPositionName
          FROM bookings b
+         LEFT JOIN invitation_codes i ON b.invitation_code = i.code
          WHERE b.admin_user_id = ? AND b.status = 'confirmed'
          ORDER BY b.booking_date ASC, b.start_time ASC
       `;

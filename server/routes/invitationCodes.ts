@@ -72,8 +72,8 @@ router.get('/', async (req, res) => {
 
 router.post('/verify', async (req, res) => {
   try {
-    const { code, userName, gender, age, phone } = req.body;
-    if (!code || !userName || !gender || !age || !phone) {
+    const { code, userName, gender = '', age = '', phone = '' } = req.body;
+    if (!code || !userName) {
       return res.status(400).json({ success: false, error: '缺少必要参数' });
     }
 
@@ -94,31 +94,45 @@ router.post('/verify', async (req, res) => {
       return res.status(400).json({ success: false, error: '邀请码已过期' });
     }
 
-    // 检查是否已经存在这个 (code, userName) 组合的 userId
-    const [existingUser] = await pool.execute(
-      `SELECT used_by as userId FROM invitation_codes 
-       WHERE code = ? AND used_by_name = ? LIMIT 1`,
-      [normalizedCode, userName]
-    ) as any[];
-
-    let userId: string;
-    if (existingUser.length > 0 && existingUser[0].userId) {
-      userId = existingUser[0].userId;
+    // 检查邀请码是否已经被使用
+    if (inviteCode.is_used) {
+      // 如果邀请码已被使用，检查当前用户是否是第一次使用该邀请码的用户
+      if (inviteCode.used_by_name !== userName) {
+        return res.status(400).json({ success: false, error: '邀请码已被使用' });
+      }
+      // 如果是第一次使用该邀请码的用户，允许登录
+      const userId = inviteCode.used_by;
       // 更新邀请码记录（用最新的使用信息）
       await pool.execute(
         `UPDATE invitation_codes SET used_by_gender = ?, used_by_age = ?, used_by_phone = ?
-         WHERE code = ? AND used_by_name = ?`,
-        [gender, age, phone, normalizedCode, userName]
-      );
-    } else {
-      userId = `regular_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      // 更新邀请码记录（用最新的使用信息）
-      await pool.execute(
-        `UPDATE invitation_codes SET used_by = ?, used_by_name = ?, used_by_gender = ?, used_by_age = ?, used_by_phone = ?, used_at = NOW()
          WHERE code = ?`,
-        [userId, userName, gender, age, phone, normalizedCode]
+        [gender, age, phone, normalizedCode]
       );
+      res.json({
+        success: true,
+        data: {
+          valid: true,
+          codeInfo: {
+            code: inviteCode.code,
+            adminUserId: inviteCode.admin_user_id,
+            adminUserName: inviteCode.admin_user_name,
+            expiresAt: new Date(inviteCode.expires_at).toISOString()
+          },
+          userId
+        }
+      });
+      return;
     }
+
+    // 生成新的 userId
+    const userId = `regular_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    
+    // 更新邀请码记录
+    await pool.execute(
+      `UPDATE invitation_codes SET used_by = ?, used_by_name = ?, used_by_gender = ?, used_by_age = ?, used_by_phone = ?, used_at = NOW(), is_used = 1
+       WHERE code = ?`,
+      [userId, userName, gender, age, phone, normalizedCode]
+    );
 
     res.json({
       success: true,

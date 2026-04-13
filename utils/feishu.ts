@@ -194,15 +194,15 @@ class FeishuService {
   }
 
   // 验证邀请码并登录普通用户
-  async loginWithInvitationCode(code: string, userName: string, gender: string, age: string, phone: string): Promise<RegularUser> {
-    const result = await verifyCode(code, userName, gender, age, phone);
+  async loginWithInvitationCode(code: string, userName: string): Promise<RegularUser> {
+    const result = await verifyCode(code, userName);
 
     const regularUser: RegularUser = {
       type: 'regular',
       name: userName,
-      gender: gender,
-      age: age,
-      phone: phone,
+      gender: '',
+      age: '',
+      phone: '',
       invitationCode: result.codeInfo.code,
       userId: result.userId
     };

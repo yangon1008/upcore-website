@@ -15,7 +15,7 @@ export default defineConfig(({ mode }) => {
             rewrite: (path) => path.replace(/^\/feishu-api/, '')
           },
           '/api': {
-            target: 'http://localhost:3002',
+            target: 'http://localhost:3001',
             changeOrigin: true
           }
         }

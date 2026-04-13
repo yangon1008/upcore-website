@@ -76,6 +76,8 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onBack }) => {
     }
   };
 
+  const [selectedBooking, setSelectedBooking] = useState<any>(null);
+
   const renderBookings = () => (
     <div className="space-y-4">
       <h2 className="text-xl font-semibold mb-6">预约用户列表</h2>
@@ -85,14 +87,16 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onBack }) => {
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">姓名</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">面试岗位</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">预约时间</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">会议链接</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {bookings.map((b) => (
-                <tr key={b.id}>
+                <tr key={b.id} className="cursor-pointer hover:bg-gray-50" onClick={() => setSelectedBooking(b)}>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{b.regularUserName}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{b.jobPositionName || '-'}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     <span className="font-medium">{b.bookingDate}</span>
                     <span className="ml-2">{b.startTime.slice(0, 5)}-{b.endTime.slice(0, 5)}</span>
@@ -111,6 +115,85 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onBack }) => {
         </div>
       ) : (
         <p className="text-gray-500 text-center py-12">暂无预约</p>
+      )}
+
+      {/* 面试者详细信息模态框 */}
+      {selectedBooking && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[80vh] overflow-y-auto p-6">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">面试者详细信息</h3>
+              <button onClick={() => setSelectedBooking(null)} className="text-gray-400 hover:text-gray-600">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <h4 className="text-sm font-medium text-gray-500">姓名</h4>
+                <p className="text-gray-900">{selectedBooking.regularUserName}</p>
+              </div>
+              <div>
+                <h4 className="text-sm font-medium text-gray-500">面试岗位</h4>
+                <p className="text-gray-900">{selectedBooking.jobPositionName || '-'}</p>
+              </div>
+              <div>
+                <h4 className="text-sm font-medium text-gray-500">性别</h4>
+                <p className="text-gray-900">{selectedBooking.gender || '-'}</p>
+              </div>
+              <div>
+                <h4 className="text-sm font-medium text-gray-500">年龄</h4>
+                <p className="text-gray-900">{selectedBooking.age || '-'}</p>
+              </div>
+              <div>
+                <h4 className="text-sm font-medium text-gray-500">手机号</h4>
+                <p className="text-gray-900">{selectedBooking.phone || '-'}</p>
+              </div>
+              <div>
+                <h4 className="text-sm font-medium text-gray-500">预约时间</h4>
+                <p className="text-gray-900">{selectedBooking.bookingDate} {selectedBooking.startTime}-{selectedBooking.endTime}</p>
+              </div>
+              <div>
+                <h4 className="text-sm font-medium text-gray-500">会议链接</h4>
+                {selectedBooking.feishuMeetingUrl ? (
+                  <a href={selectedBooking.feishuMeetingUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800">{selectedBooking.feishuMeetingUrl}</a>
+                ) : (
+                  <p className="text-gray-900">-</p>
+                )}
+              </div>
+              {selectedBooking.resume && (
+                <div>
+                  <h4 className="text-sm font-medium text-gray-500">简历</h4>
+                  <a href={selectedBooking.resume} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800">查看简历</a>
+                </div>
+              )}
+              {selectedBooking.video && (
+                <div>
+                  <h4 className="text-sm font-medium text-gray-500">视频</h4>
+                  <a href={selectedBooking.video} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800">查看视频</a>
+                </div>
+              )}
+              {selectedBooking.website && (
+                <div>
+                  <h4 className="text-sm font-medium text-gray-500">个人网站</h4>
+                  <a href={selectedBooking.website} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800">访问网站</a>
+                </div>
+              )}
+              {selectedBooking.introduction && (
+                <div>
+                  <h4 className="text-sm font-medium text-gray-500">个人介绍</h4>
+                  <p className="text-gray-900">{selectedBooking.introduction}</p>
+                </div>
+              )}
+            </div>
+            <div className="mt-6 flex justify-end">
+              <button onClick={() => setSelectedBooking(null)} className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors">
+                关闭
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

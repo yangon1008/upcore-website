@@ -1,14 +1,16 @@
 import express from 'express';
 import cors from 'cors';
+import path from 'path';
 import invitationCodesRoutes from './routes/invitationCodes';
 import slotsRoutes from './routes/slots';
 import bookingsRoutes from './routes/bookings';
 import feishuRoutes from './routes/feishu';
 import jobPositionsRoutes from './routes/jobPositions';
+import filesRoutes from './routes/files';
 import { initializeDatabase } from './db/connection';
 
 const app = express();
-const PORT = parseInt(process.env.PORT || '3002');
+const PORT = parseInt(process.env.PORT || '3001');
 
 app.use(cors());
 app.use(express.json());
@@ -18,6 +20,10 @@ app.use('/api/slots', slotsRoutes);
 app.use('/api/bookings', bookingsRoutes);
 app.use('/api/feishu', feishuRoutes);
 app.use('/api/job-positions', jobPositionsRoutes);
+app.use('/api/files', filesRoutes);
+
+// 配置静态文件服务，提供上传的文件
+app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
@@ -49,6 +55,8 @@ async function start() {
       console.log(`   PUT    /api/feishu/calendars/:id      — 更新日历`);
       console.log(`   DELETE /api/feishu/calendars/:id      — 删除日历`);
       console.log(`   POST   /api/feishu/events/:id/attendees — 添加日程参与人`);
+      console.log(`   POST   /api/files/upload              — 多文件上传`);
+      console.log(`   POST   /api/files/upload/single       — 单个文件上传`);
     });
   } catch (error) {
     console.error('❌ 启动失败:', error);

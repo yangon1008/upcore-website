@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { RegularUser } from '../utils/feishu';
 import { verifyCode, getAvailableSlots, createBooking, cancelBooking, getUserBooking, getJobPositions, AvailableSlotData, CreateBookingResult, VerifyResult, UserBookingData, JobPositionData } from '../utils/database';
+import UserInfoForm from './UserInfoForm';
 
 interface RegularUserBookingProps {
   user: RegularUser;
@@ -19,6 +20,17 @@ const RegularUserBooking: React.FC<RegularUserBookingProps> = ({ user, onRefresh
   const [error, setError] = useState('');
   const [selectedDate, setSelectedDate] = useState<string>('');
   const [refreshing, setRefreshing] = useState(false);
+  const [currentStep, setCurrentStep] = useState<'info' | 'booking' | 'success'>('info');
+  const [userInfo, setUserInfo] = useState({
+    gender: user.gender || 'male',
+    age: user.age || '',
+    phone: user.phone || '',
+    jobPositionId: 0,
+    jobPositionName: '',
+    introduction: '',
+    files: [] as any[]
+  });
+  const [invitationCodeInfo, setInvitationCodeInfo] = useState<{ expiresAt: string } | null>(null);
 
   const refresh = async () => {
     setRefreshing(true);
@@ -38,29 +50,27 @@ const RegularUserBooking: React.FC<RegularUserBookingProps> = ({ user, onRefresh
         setBookingStatus('success');
         setError('');
         setAdminInfo({ adminUserId: '', adminUserName: existingBooking.adminUserName });
+        setCurrentStep('success');
         setLoading(false);
         setRefreshing(false);
         return;
       }
 
       // 如果没有预约，继续加载可预约时间和岗位
-      const result: VerifyResult = await verifyCode(user.invitationCode, user.name, user.gender, user.age, user.phone);
+      const result: VerifyResult = await verifyCode(user.invitationCode, user.name);
       setAdminInfo({ adminUserId: result.codeInfo.adminUserId, adminUserName: result.codeInfo.adminUserName });
+      setInvitationCodeInfo({ expiresAt: result.codeInfo.expiresAt });
 
-      const [slots, positions] = await Promise.all([
-        getAvailableSlots(result.codeInfo.adminUserId),
+      const [positions] = await Promise.all([
         getJobPositions(result.codeInfo.adminUserId)
       ]);
-      setAvailableSlots(slots);
       setJobPositions(positions);
-      
-      if (slots.length > 0) {
-        const firstDate = [...new Set(slots.map(s => s.date))].sort()[0];
-        setSelectedDate(firstDate);
-      }
       setError('');
+      setCurrentStep('info');
     } catch (err: any) {
       setError(err.message || '获取信息失败');
+      // 1.5秒后清除错误
+      setTimeout(() => setError(''), 1500);
     } finally {
       setRefreshing(false);
       setLoading(false);
@@ -77,8 +87,45 @@ const RegularUserBooking: React.FC<RegularUserBookingProps> = ({ user, onRefresh
     }
   }, [onRefresh]);
 
+  const handleUserInfoSubmit = async (data: {
+    gender: string;
+    age: string;
+    phone: string;
+    jobPositionId: number;
+    jobPositionName: string;
+    introduction?: string;
+    files?: any[];
+  }) => {
+    setLoading(true);
+    try {
+      setUserInfo(data);
+      // 加载可用的面试场次
+      if (adminInfo && invitationCodeInfo) {
+        const slots = await getAvailableSlots(adminInfo.adminUserId);
+        // 过滤出邀请码有效期内的场次
+        const validSlots = slots.filter(slot => {
+          const slotDate = new Date(slot.date);
+          const expiresAt = new Date(invitationCodeInfo.expiresAt);
+          return slotDate <= expiresAt;
+        });
+        setAvailableSlots(validSlots);
+        if (validSlots.length > 0) {
+          const firstDate = [...new Set(validSlots.map(s => s.date))].sort()[0];
+          setSelectedDate(firstDate);
+        }
+      }
+      setCurrentStep('booking');
+    } catch (err: any) {
+      setError(err.message || '加载场次失败');
+      // 1.5秒后清除错误
+      setTimeout(() => setError(''), 1500);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleBook = async () => {
-    if (!selectedSlot || !adminInfo || !selectedPosition) return;
+    if (!selectedSlot || !adminInfo) return;
     setBookingStatus('booking');
     setError('');
     try {
@@ -88,17 +135,21 @@ const RegularUserBooking: React.FC<RegularUserBookingProps> = ({ user, onRefresh
         regularUserId: user.userId,
         regularUserName: user.name,
         invitationCode: user.invitationCode,
-        jobPositionId: selectedPosition.id,
-        jobPositionName: selectedPosition.positionName,
+        jobPositionId: userInfo.jobPositionId,
+        jobPositionName: userInfo.jobPositionName,
         bookingDate: selectedSlot.date,
         startTime: selectedSlot.startTime,
-        endTime: selectedSlot.endTime
+        endTime: selectedSlot.endTime,
+        files: userInfo.files
       });
       setBookingResult(result);
       setBookingStatus('success');
+      setCurrentStep('success');
     } catch (err: any) {
       setError(err.message || '预约失败');
       setBookingStatus('error');
+      // 1.5秒后清除错误
+      setTimeout(() => setError(''), 1500);
     }
   };
 
@@ -109,7 +160,7 @@ const RegularUserBooking: React.FC<RegularUserBookingProps> = ({ user, onRefresh
       setBookingStatus('idle');
       setBookingResult(null);
       setSelectedSlot(null);
-      init();
+      refresh();
     } catch (_err) {
       alert('取消失败');
     }
@@ -144,49 +195,76 @@ const RegularUserBooking: React.FC<RegularUserBookingProps> = ({ user, onRefresh
     );
   }
 
-  if (bookingStatus === 'success' && bookingResult) {
-    return (
-      <div className="max-w-lg mx-auto text-center py-8 space-y-6">
-        <div className="w-20 h-20 mx-auto bg-green-100 rounded-full flex items-center justify-center">
-          <svg className="w-10 h-10 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-          </svg>
-        </div>
-        <h2 className="text-2xl font-bold text-gray-900">预约成功!</h2>
-
-        <div className="bg-gray-50 rounded-xl p-6 space-y-3 text-left">
-          <div className="flex justify-between">
-            <span className="text-gray-500">面试官</span>
-            <span className="font-medium">{adminInfo?.adminUserName}</span>
+  // 步骤导航组件
+  const renderStepNavigation = () => (
+    <div className="mb-8">
+      <div className="flex items-center justify-between">
+        <div className="flex-1 flex items-center">
+          <div className={`w-8 h-8 rounded-full flex items-center justify-center ${currentStep === 'info' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-500'}`}>
+            1
           </div>
-          <div className="flex justify-between">
-            <span className="text-gray-500">时间</span>
-            <span className="font-medium">{bookingResult.bookingDate} {bookingResult.startTime}-{bookingResult.endTime}</span>
-          </div>
-          {bookingResult.feishuMeetingUrl && (
-            <div className="pt-2 border-t">
-              <span className="text-gray-500 block mb-2">会议链接</span>
-              <a href={bookingResult.feishuMeetingUrl} target="_blank" rel="noopener noreferrer"
-                 className="inline-flex items-center text-blue-600 hover:text-blue-800 font-medium">
-                <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                </svg>
-                加入视频会议
-              </a>
-            </div>
-          )}
+          <div className={`h-1 flex-1 mx-2 ${currentStep === 'info' ? 'bg-gray-200' : 'bg-blue-600'}`} style={{ width: '140px' }}></div>
         </div>
-
-        <button onClick={handleCancel} className="text-red-600 hover:text-red-800 font-medium transition-colors">
-          取消预约
-        </button>
+        <div className="flex-1 flex items-center">
+          <div className={`w-8 h-8 rounded-full flex items-center justify-center ${currentStep === 'booking' ? 'bg-blue-600 text-white' : currentStep === 'success' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-500'}`}>
+            2
+          </div>
+          <div className={`h-1 flex-1 mx-2 ${currentStep === 'booking' ? 'bg-gray-200' : currentStep === 'success' ? 'bg-blue-600' : 'bg-gray-200'}`} style={{ width: '140px' }}></div>
+        </div>
+        <div className="flex items-center justify-center" style={{ width: '32px' }}>
+          <div className={`w-8 h-8 rounded-full flex items-center justify-center ${currentStep === 'success' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-500'}`}>
+            3
+          </div>
+        </div>
       </div>
-    );
-  }
+      <div className="flex mt-2 text-sm text-gray-600">
+        <div className="flex-1">
+          <div className={currentStep === 'info' ? 'text-blue-600 font-medium' : ''} style={{ textAlign: 'left' }}>填写个人信息</div>
+        </div>
+        <div className="flex-1 text-center">
+          <div className={currentStep === 'booking' ? 'text-blue-600 font-medium' : ''}>选择预约时间</div>
+        </div>
+        <div className="flex-1">
+          <div className={currentStep === 'success' ? 'text-blue-600 font-medium' : ''} style={{ textAlign: 'right' }}>预约成功</div>
+        </div>
+      </div>
+    </div>
+  );
 
-  return (
-    <div className="max-w-lg mx-auto space-y-6">
-      <div className="bg-blue-50 p-4 rounded-xl flex items-center justify-between">
+  // 个人信息步骤
+  const renderInfoStep = () => (
+    <div className={currentStep === 'info' ? 'block' : 'hidden'}>
+      <div className="bg-blue-50 p-4 rounded-xl flex items-center justify-between mb-6">
+        <div>
+          <p className="text-sm text-blue-600 font-medium">面试官</p>
+          <p className="text-lg font-bold text-blue-900">{maskName(adminInfo?.adminUserName || '')}</p>
+        </div>
+        <div className="text-right">
+          <p className="text-sm text-blue-600 font-medium">您的姓名</p>
+          <p className="text-lg font-bold text-blue-900">{user.name}</p>
+        </div>
+      </div>
+      
+      <UserInfoForm
+        jobPositions={jobPositions}
+        onSubmit={handleUserInfoSubmit}
+        onBack={() => {}}
+        loading={loading}
+        initialData={userInfo}
+      />
+      
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 mt-4">
+          <p className="text-red-600 text-sm">{error}</p>
+        </div>
+      )}
+    </div>
+  );
+
+  // 预约时间步骤
+  const renderBookingStep = () => (
+    <div className={currentStep === 'booking' ? 'block' : 'hidden'}>
+      <div className="bg-blue-50 p-4 rounded-xl flex items-center justify-between mb-6">
         <div>
           <p className="text-sm text-blue-600 font-medium">面试官</p>
           <p className="text-lg font-bold text-blue-900">{maskName(adminInfo?.adminUserName || '')}</p>
@@ -198,42 +276,6 @@ const RegularUserBooking: React.FC<RegularUserBookingProps> = ({ user, onRefresh
       </div>
 
       <div className="space-y-4">
-        <h3 className="font-medium text-gray-900 flex items-center">
-          <svg className="w-5 h-5 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-          </svg>
-          选择面试岗位
-        </h3>
-
-        {jobPositions.length > 0 ? (
-          <div className="space-y-2">
-            {jobPositions.filter(p => p.isActive).map((position) => (
-              <button
-                key={position.id}
-                onClick={() => setSelectedPosition(selectedPosition?.id === position.id ? null : position)}
-                className={`w-full text-left p-4 rounded-xl border-2 transition-all ${
-                  selectedPosition?.id === position.id
-                    ? 'border-blue-500 bg-blue-50 shadow-sm'
-                    : 'border-gray-200 hover:border-blue-300 hover:bg-gray-50'
-                }`}
-              >
-                <div className="text-lg font-semibold text-gray-900">{position.positionName}</div>
-                {position.description && (
-                  <div className="text-sm text-gray-500 mt-1">{position.description}</div>
-                )}
-              </button>
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-8 bg-gray-50 rounded-xl">
-            <svg className="w-12 h-12 mx-auto text-gray-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-            </svg>
-            <p className="text-gray-400">暂无面试岗位</p>
-            <p className="text-gray-400 text-sm mt-1">请联系管理员添加面试岗位</p>
-          </div>
-        )}
-
         <h3 className="font-medium text-gray-900 flex items-center">
           <svg className="w-5 h-5 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -305,23 +347,96 @@ const RegularUserBooking: React.FC<RegularUserBookingProps> = ({ user, onRefresh
           </div>
         )}
 
-        {selectedSlot && selectedDate && currentSlots.length > 0 && selectedPosition && (
+        <div className="flex space-x-4 mt-6">
           <button
-            onClick={handleBook}
-            disabled={bookingStatus === 'booking'}
-            className="w-full bg-blue-600 text-white py-3 px-4 rounded-xl hover:bg-blue-700 transition-colors font-medium text-lg disabled:opacity-50"
+            onClick={() => setCurrentStep('info')}
+            className="flex-1 px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-medium"
           >
-            {bookingStatus === 'booking' ? (
-              <span className="flex items-center justify-center">
-                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-                预约中...
-              </span>
-            ) : (
-              `确认预约 ${slotsByDate[selectedDate][0].displayDate} ${selectedSlot.startTime}-${selectedSlot.endTime}`
-            )}
+            上一步
           </button>
-        )}
+          {selectedSlot && selectedDate && currentSlots.length > 0 && (
+            <button
+              onClick={handleBook}
+              disabled={bookingStatus === 'booking'}
+              className="flex-1 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:opacity-50"
+            >
+              {bookingStatus === 'booking' ? (
+                <span className="flex items-center justify-center">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  预约中...
+                </span>
+              ) : (
+                `确认预约 ${slotsByDate[selectedDate][0].displayDate} ${selectedSlot.startTime}-${selectedSlot.endTime}`
+              )}
+            </button>
+          )}
+        </div>
       </div>
+    </div>
+  );
+
+  // 预约成功步骤
+  const renderSuccessStep = () => (
+    <div className={currentStep === 'success' ? 'block' : 'hidden'}>
+      <div className="text-center py-8 space-y-6">
+        <div className="w-20 h-20 mx-auto bg-green-100 rounded-full flex items-center justify-center">
+          <svg className="w-10 h-10 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+          </svg>
+        </div>
+        <h2 className="text-2xl font-bold text-gray-900">预约成功!</h2>
+
+        <div className="bg-gray-50 rounded-xl p-6 space-y-3 text-left">
+          <div className="flex justify-between">
+            <span className="text-gray-500">面试官</span>
+            <span className="font-medium">{adminInfo?.adminUserName}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-gray-500">面试岗位</span>
+            <span className="font-medium">{userInfo.jobPositionName}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-gray-500">时间</span>
+            <span className="font-medium">{bookingResult?.bookingDate} {bookingResult?.startTime}-{bookingResult?.endTime}</span>
+          </div>
+          {bookingResult?.feishuMeetingUrl && (
+            <div className="pt-2 border-t">
+              <span className="text-gray-500 block mb-2">会议链接</span>
+              <a href={bookingResult.feishuMeetingUrl} target="_blank" rel="noopener noreferrer"
+                 className="inline-flex items-center text-blue-600 hover:text-blue-800 font-medium">
+                <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                </svg>
+                加入视频会议
+              </a>
+            </div>
+          )}
+        </div>
+
+        <div className="flex space-x-4">
+          <button
+            onClick={() => setCurrentStep('booking')}
+            className="flex-1 px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+          >
+            上一步
+          </button>
+          <button
+            onClick={handleCancel}
+            className="flex-1 px-4 py-3 text-red-600 border border-red-300 rounded-lg hover:bg-red-50 transition-colors font-medium"
+          >
+            取消预约
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="max-w-lg mx-auto w-4/5 space-y-6 py-8">
+      {renderStepNavigation()}
+      {renderInfoStep()}
+      {renderBookingStep()}
+      {renderSuccessStep()}
     </div>
   );
 };

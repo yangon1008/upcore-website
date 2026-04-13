@@ -1,4 +1,4 @@
-const API_BASE = 'http://localhost:3000/api';
+const API_BASE = '/api';
 const CODES_BASE = `${API_BASE}/invitation-codes`;
 const SLOTS_BASE = `${API_BASE}/slots`;
 const BOOKINGS_BASE = `${API_BASE}/bookings`;
@@ -101,11 +101,11 @@ export async function getCodes(adminUserId: string): Promise<InvitationCodeData[
   return data.data;
 }
 
-export async function verifyCode(code: string, userName: string, gender: string, age: string, phone: string): Promise<VerifyResult> {
+export async function verifyCode(code: string, userName: string): Promise<VerifyResult> {
   const res = await fetch(`${CODES_BASE}/verify`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ code, userName, gender, age, phone })
+    body: JSON.stringify({ code, userName })
   });
   const data = await res.json();
   if (!data.success) throw new Error(data.error || '邀请码验证失败');
@@ -166,6 +166,7 @@ export async function createBooking(booking: {
   endTime: string;
   calendarId?: string;
   color?: string;
+  files?: any[];
 }): Promise<CreateBookingResult> {
   const res = await fetch(BOOKINGS_BASE, {
     method: 'POST',

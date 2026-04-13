@@ -28,7 +28,11 @@ const App: React.FC = () => {
     const urlParams = new URLSearchParams(window.location.search);
     const viewParam = urlParams.get('view');
     
-    if (viewParam && ['home', 'detail', 'support', 'about', 'app', 'privacy', 'interview'].includes(viewParam)) {
+    // 检查路径
+    const path = window.location.pathname;
+    if (path === '/interview') {
+      setView('interview');
+    } else if (viewParam && ['home', 'detail', 'support', 'about', 'app', 'privacy', 'interview'].includes(viewParam)) {
       setView(viewParam as ViewType);
       // 清除 URL 中的 view 参数
       window.history.replaceState({}, document.title, window.location.pathname);
