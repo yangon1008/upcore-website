@@ -460,7 +460,7 @@ const RegularUserBooking: React.FC<RegularUserBookingProps> = ({ user, onRefresh
                   预约中...
                 </span>
               ) : (
-                `确认预约 ${slotsByDate[selectedDate][0].displayDate} ${selectedSlot.startTime}-${selectedSlot.endTime}`
+                `确认预约`
               )}
             </button>
           )}

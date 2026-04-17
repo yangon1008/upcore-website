@@ -1,5 +1,6 @@
 import express from 'express';
 import { pool } from '../db/connection';
+import { refreshUserToken, refreshExpiringTokens } from '../services/tokenRefreshService';
 
 const router = express.Router();
 
@@ -125,6 +126,34 @@ router.post('/save-feishu-token', async (req, res) => {
     res.json({ success: true, message: '飞书令牌保存成功' });
   } catch (error) {
     console.error('保存飞书令牌失败:', error);
+    res.status(500).json({ success: false, message: '服务器内部错误' });
+  }
+});
+
+// 手动刷新单个用户的令牌
+router.post('/refresh-token', async (req, res) => {
+  try {
+    const { userId } = req.body;
+    
+    if (!userId) {
+      return res.status(400).json({ success: false, message: '缺少必要参数 userId' });
+    }
+
+    await refreshUserToken(userId);
+    res.json({ success: true, message: '用户令牌刷新成功' });
+  } catch (error: any) {
+    console.error('手动刷新用户令牌失败:', error);
+    res.status(500).json({ success: false, message: error.message || '服务器内部错误' });
+  }
+});
+
+// 手动刷新所有即将过期的令牌
+router.post('/refresh-all-tokens', async (_req, res) => {
+  try {
+    await refreshExpiringTokens();
+    res.json({ success: true, message: '令牌刷新任务已执行' });
+  } catch (error: any) {
+    console.error('手动刷新所有令牌失败:', error);
     res.status(500).json({ success: false, message: '服务器内部错误' });
   }
 });

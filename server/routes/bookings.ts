@@ -162,18 +162,6 @@ async function getUserAccessTokenFromDB(adminUserId: string) {
   }
 }
 
-async function getMockUserAccessToken() {
-  try {
-    console.log('正在获取 Mock User Access Token...');
-    const appToken = await getAppAccessToken();
-    console.log('使用App Access Token作为临时替代');
-    return appToken;
-  } catch (error: any) {
-    console.error('获取 Mock User Access Token 异常:', error.message);
-    throw error;
-  }
-}
-
 async function getOrCreateInterviewCalendar(token: string) {
   try {
     console.log('正在获取或创建面试日历...');
@@ -238,72 +226,113 @@ async function getOrCreateInterviewCalendar(token: string) {
   }
 }
 
-async function createFeishuEvent(token: string, summary: string, startTime: string, endTime: string, userId: string, calendarId?: string, color?: string) {
-  try {
-    console.log('正在创建飞书日程...');
-    // 获取或创建面试日历
-    const finalCalendarId = calendarId || await getOrCreateInterviewCalendar(token);
-    console.log('使用的日历ID:', finalCalendarId);
-    
-    console.log('参数:', {
-      summary,
-      startTime,
-      endTime,
-      userId,
-      calendarId: finalCalendarId,
-      color
-    });
-    
-    // 天蓝色的十六进制颜色代码转换为整数，默认天蓝色
-    const colorInt = color ? parseInt(color.replace('#', ''), 16) : parseInt('1890ff', 16);
-    
-    // 构建请求体 - 根据飞书 API 文档要求
-    const requestBody = {
-      summary: summary,
-      description: `面试预约：${summary}`,
-      start_time: {
-        timestamp: Math.floor(new Date(startTime).getTime() / 1000),
-        time_zone: 'Asia/Shanghai'
-      },
-      end_time: {
-        timestamp: Math.floor(new Date(endTime).getTime() / 1000),
-        time_zone: 'Asia/Shanghai'
-      },
-      vchat: {
-        vc_type: 'vc'
-      },
-      visibility: 'default',
-      need_notification: true,
-      color: colorInt
-    };
-    
-    console.log('请求体:', JSON.stringify(requestBody, null, 2));
-    
-    // 创建日程
-    const res = await fetch(`${FEISHU_BASE_URL}/calendar/v4/calendars/${finalCalendarId}/events`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      body: JSON.stringify(requestBody)
-    });
-    
-    console.log('飞书API响应状态:', res.status);
-    const data = await res.json();
-    console.log('创建飞书日程响应:', JSON.stringify(data, null, 2));
-    
-    if (data.code !== 0) {
-      throw new Error(`创建飞书日程失败: ${data.msg} (code: ${data.code})`);
+async function createFeishuEvent(token: string, summary: string, startTime: string, endTime: string, userId: string, calendarId?: string, color?: string, userIntroduction?: string) {
+  let currentToken = token;
+  let retryCount = 0;
+  const maxRetries = 1;
+
+  while (retryCount <= maxRetries) {
+    try {
+      console.log('正在创建飞书日程...');
+      console.log('使用的 token:', currentToken.substring(0, 20) + '...');
+      console.log('重试次数:', retryCount);
+      
+      // 获取或创建面试日历
+      const finalCalendarId = calendarId || await getOrCreateInterviewCalendar(currentToken);
+      console.log('使用的日历ID:', finalCalendarId);
+      
+      console.log('参数:', {
+        summary,
+        startTime,
+        endTime,
+        userId,
+        calendarId: finalCalendarId,
+        color,
+        userIntroduction
+      });
+      
+      // 天蓝色的十六进制颜色代码转换为整数，默认天蓝色
+      const colorInt = color ? parseInt(color.replace('#', ''), 16) : parseInt('1890ff', 16);
+      
+      // 构建请求体 - 根据飞书 API 文档要求
+      const requestBody = {
+        summary: summary,
+        description: userIntroduction || `面试预约：${summary}`,
+        start_time: {
+          timestamp: Math.floor(new Date(startTime).getTime() / 1000),
+          time_zone: 'Asia/Shanghai'
+        },
+        end_time: {
+          timestamp: Math.floor(new Date(endTime).getTime() / 1000),
+          time_zone: 'Asia/Shanghai'
+        },
+        vchat: {
+          vc_type: 'vc'
+        },
+        visibility: 'default',
+        need_notification: true,
+        color: colorInt
+      };
+      
+      console.log('请求体:', JSON.stringify(requestBody, null, 2));
+      
+      // 创建日程
+      const res = await fetch(`${FEISHU_BASE_URL}/calendar/v4/calendars/${finalCalendarId}/events`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${currentToken}`
+        },
+        body: JSON.stringify(requestBody)
+      });
+      
+      console.log('飞书API响应状态:', res.status);
+      const data = await res.json();
+      console.log('创建飞书日程响应:', JSON.stringify(data, null, 2));
+      
+      // 检查是否是令牌过期错误
+      if (data.code === 99991677) {
+        console.warn('检测到令牌过期错误');
+        if (retryCount < maxRetries) {
+          console.log('尝试刷新令牌并重试...');
+          // 如果是第一次失败，尝试刷新令牌
+          const newToken = await getUserAccessTokenFromDB(userId);
+          if (newToken && newToken !== currentToken) {
+            currentToken = newToken;
+            retryCount++;
+            console.log('令牌刷新成功，继续重试...');
+            continue;
+          } else {
+            console.warn('无法刷新令牌，抛出错误');
+            throw new Error(`创建飞书日程失败: ${data.msg} (code: ${data.code})`);
+          }
+        } else {
+          console.warn('已达到最大重试次数');
+          throw new Error(`创建飞书日程失败: ${data.msg} (code: ${data.code})`);
+        }
+      }
+      
+      if (data.code !== 0) {
+        throw new Error(`创建飞书日程失败: ${data.msg} (code: ${data.code})`);
+      }
+      
+      console.log('飞书日程事件:', JSON.stringify(data.data?.event, null, 2));
+      return { event: data.data?.event, calendarId: finalCalendarId };
+    } catch (error: any) {
+      // 如果是在重试过程中抛出的错误，直接抛出
+      if (retryCount > 0) {
+        console.error('重试后仍然失败:', error.message);
+        throw error;
+      }
+      
+      console.error('创建飞书日程异常:', error.message);
+      console.error('创建飞书日程异常详细信息:', error);
+      throw error;
     }
-    
-    console.log('飞书日程事件:', JSON.stringify(data.data?.event, null, 2));
-    return { event: data.data?.event, calendarId: finalCalendarId };
-  } catch (error: any) {
-    console.error('创建飞书日程异常:', error.message);
-    console.error('创建飞书日程异常详细信息:', error);
-    throw error;
   }
+  
+  // 应该不会到这里
+  throw new Error('创建飞书日程失败: 未知错误');
 }
 
 router.post('/', async (req, res) => {
@@ -358,6 +387,28 @@ router.post('/', async (req, res) => {
         console.log('数据库中没有 User Access Token，跳过飞书API调用');
       } else {
         console.log('获取 User Access Token 成功，创建飞书日程...');
+        
+        // 获取面试者个人介绍
+        let userIntroduction = '';
+        if (invitationCode) {
+          try {
+            console.log('尝试从 invitation_codes 表获取面试者个人介绍...');
+            const [introductionRows] = await pool.execute(
+              'SELECT used_by_introduction FROM invitation_codes WHERE code = ?',
+              [invitationCode]
+            );
+            
+            if (Array.isArray(introductionRows) && introductionRows.length > 0) {
+              const introData = introductionRows[0] as any;
+              userIntroduction = introData.used_by_introduction || '';
+              console.log('获取到面试者个人介绍:', userIntroduction);
+            }
+          } catch (introErr) {
+            console.error('获取面试者个人介绍失败:', introErr.message);
+          }
+        }
+        
+        // 第一步：先创建飞书日程（暂时不设置description）
         const result = await createFeishuEvent(
           token,
           `面试-${regularUserName}-${jobPositionName || '未知岗位'}`,
@@ -365,7 +416,8 @@ router.post('/', async (req, res) => {
           `${bookingDate}T${endTime}+08:00`,
           adminUserId,
           req.body.calendarId,
-          req.body.color
+          req.body.color,
+          ''  // 暂时不设置description
         );
 
         const event = result.event;
@@ -382,7 +434,46 @@ router.post('/', async (req, res) => {
                           event?.video_conference?.vc_url ||
                           event?.video_conference?.join_url ||
                           null;
-        console.log('✅ 飞书API调用成功:', { feishuEventId, feishuMeetingUrl, feishuCalendarId, fullEvent: event });
+        console.log('✅ 飞书日程创建成功:', { feishuEventId, feishuMeetingUrl, feishuCalendarId, fullEvent: event });
+
+        // 第二步：如果有会议链接，更新日程的description，添加会议链接
+        if (feishuMeetingUrl && feishuEventId) {
+          try {
+            console.log('========== 开始更新飞书日程description ==========');
+            console.log('会议链接:', feishuMeetingUrl);
+            console.log('用户简介:', userIntroduction);
+            
+            // 构建新的description
+            const newDescription = `飞书会议链接： ${feishuMeetingUrl} 
+个人简介：${userIntroduction || '暂无个人简介'}`;
+            
+            console.log('新的description:', newDescription);
+            
+            // 更新飞书日程
+            const updateRes = await fetch(`${FEISHU_BASE_URL}/calendar/v4/calendars/${feishuCalendarId}/events/${feishuEventId}`, {
+              method: 'PATCH',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+              },
+              body: JSON.stringify({
+                description: newDescription
+              })
+            });
+            
+            console.log('更新飞书日程响应状态:', updateRes.status);
+            const updateData = await updateRes.json();
+            console.log('更新飞书日程响应:', JSON.stringify(updateData, null, 2));
+            
+            if (updateData.code === 0) {
+              console.log('✅ 飞书日程description更新成功');
+            } else {
+              console.error('⚠️ 飞书日程description更新失败:', updateData.msg);
+            }
+          } catch (updateErr: any) {
+            console.error('⚠️ 更新飞书日程description失败(不影响预约):', updateErr.message);
+          }
+        }
 
         if (feishuEventId || feishuMeetingUrl || feishuCalendarId) {
           console.log('更新预约记录，添加飞书信息...');
@@ -435,7 +526,7 @@ router.get('/', async (req, res) => {
     if (adminUserId) {
       query = `
         SELECT b.id, b.regular_user_name as regularUserName, DATE_FORMAT(b.booking_date, '%Y-%m-%d') as bookingDate,
-                b.start_time as startTime, b.end_time as endTime,
+                DATE_FORMAT(b.start_time, '%H:%i') as startTime, DATE_FORMAT(b.end_time, '%H:%i') as endTime,
                 b.feishu_meeting_url as feishuMeetingUrl, b.status, b.created_at as createdAt,
                 i.used_by_gender as gender, i.used_by_age as age, i.used_by_phone as phone,
                 i.used_by_files as files, i.used_by_introduction as introduction,
@@ -450,7 +541,7 @@ router.get('/', async (req, res) => {
     } else {
       query = `
         SELECT b.id, b.admin_user_name as adminUserName, DATE_FORMAT(b.booking_date, '%Y-%m-%d') as bookingDate,
-                b.start_time as startTime, b.end_time as endTime,
+                DATE_FORMAT(b.start_time, '%H:%i') as startTime, DATE_FORMAT(b.end_time, '%H:%i') as endTime,
                 b.feishu_meeting_url as feishuMeetingUrl, b.status, b.created_at as createdAt
          FROM bookings b
          WHERE b.regular_user_id = ? AND b.status = 'confirmed'

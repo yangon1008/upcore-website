@@ -180,7 +180,7 @@ class FeishuService {
           date_time: endTime
         },
         vchat: {
-          vc_type: 'lark_vc'
+          vc_type: 'vc'
         }
       })
     });

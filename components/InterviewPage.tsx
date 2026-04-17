@@ -105,7 +105,7 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onBack }) => {
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{b.jobPositionName || '-'}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     <span className="font-medium">{b.bookingDate}</span>
-                    <span className="ml-2">{b.startTime.slice(0, 5)}-{b.endTime.slice(0, 5)}</span>
+                    <span className="ml-2">{b.startTime}-{b.endTime}</span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
                     {b.feishuMeetingUrl ? (

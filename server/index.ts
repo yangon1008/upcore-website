@@ -9,6 +9,7 @@ import jobPositionsRoutes from './routes/jobPositions';
 import filesRoutes from './routes/files';
 import usersRoutes from './routes/users';
 import { initializeDatabase } from './db/connection';
+import { startTokenRefreshService } from './services/tokenRefreshService';
 
 const app = express();
 const PORT = parseInt(process.env.PORT || '3001');
@@ -90,7 +91,12 @@ async function start() {
       console.log(`   POST   /api/feishu/events/:id/attendees — 添加日程参与人`);
       console.log(`   POST   /api/files/upload              — 多文件上传`);
       console.log(`   POST   /api/files/upload/single       — 单个文件上传`);
+      console.log(`   POST   /api/users/refresh-token        — 手动刷新用户令牌`);
+      console.log(`   POST   /api/users/refresh-all-tokens   — 手动刷新所有令牌`);
     });
+    
+    // 启动令牌刷新服务
+    startTokenRefreshService();
   } catch (error) {
     console.error('❌ 启动失败:', error);
     process.exit(1);
