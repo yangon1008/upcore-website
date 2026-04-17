@@ -1,10 +1,22 @@
-import { verifyCode } from './database';
+import { verifyCode, getInvitationCodeUserInfo } from './database';
 
-const APP_ID = import.meta.env.VITE_FEISHU_APP_ID;
-const APP_SECRET = import.meta.env.VITE_FEISHU_APP_SECRET;
+// 扩展ImportMeta类型
+declare interface ImportMeta {
+  env: {
+    VITE_FEISHU_APP_ID: string;
+    VITE_FEISHU_APP_SECRET: string;
+    VITE_FEISHU_REDIRECT_URI?: string;
+  };
+}
 
-// 动态获取当前域名作为重定向基础，若 .env 中有设置则优先使用
-const REDIRECT_URI = import.meta.env.VITE_FEISHU_REDIRECT_URI || `${window.location.origin}/interview`;
+// 从环境变量中获取配置
+const APP_ID = (import.meta as unknown as ImportMeta).env.VITE_FEISHU_APP_ID || '';
+const APP_SECRET = (import.meta as unknown as ImportMeta).env.VITE_FEISHU_APP_SECRET || '';
+
+
+
+// 动态获取当前域名作为重定向基础，若环境变量中有设置则优先使用
+const REDIRECT_URI = (import.meta as unknown as ImportMeta).env.VITE_FEISHU_REDIRECT_URI || `${window.location.origin}/interview`;
 
 // 使用后端服务器地址访问飞书 API
 const BASE_URL = '/api/feishu'
@@ -16,6 +28,11 @@ export interface FeishuUser {
   open_id: string;
   union_id: string;
   user_id: string;
+  mobile?: string;
+  email?: string;
+  en_name?: string;
+  enterprise_email?: string;
+  employee_no?: string;
 }
 
 export interface RegularUser {
@@ -91,7 +108,11 @@ class FeishuService {
       this.user_refresh_token = data.data.refresh_token;
       localStorage.setItem('feishu_user_token', this.user_token!);
       localStorage.setItem('feishu_user_refresh_token', this.user_refresh_token!);
-      return this.user_token;
+      return {
+        access_token: data.data.access_token,
+        refresh_token: data.data.refresh_token,
+        expires_in: data.data.expires_in
+      };
     }
     throw new Error(`获取 User Access Token 失败: ${data.msg}`);
   }
@@ -106,7 +127,11 @@ class FeishuService {
     });
     const data = await res.json();
     if (data.code === 0) {
-      return { ...data.data, type: 'feishu' } as FeishuUser;
+      return { 
+        ...data.data, 
+        type: 'feishu',
+        avatar_url: data.data.avatar_url || data.data.avatar_big || data.data.avatar_middle || data.data.avatar_thumb
+      } as FeishuUser;
     }
     return null;
   }
@@ -197,12 +222,20 @@ class FeishuService {
   async loginWithInvitationCode(code: string, userName: string): Promise<RegularUser> {
     const result = await verifyCode(code, userName);
 
+    // 尝试从 invitation_codes 表加载用户已保存的信息
+    let savedUserInfo: any = null;
+    try {
+      savedUserInfo = await getInvitationCodeUserInfo(code);
+    } catch (err) {
+      console.log('没有找到已保存的用户信息，使用默认值');
+    }
+
     const regularUser: RegularUser = {
       type: 'regular',
       name: userName,
-      gender: '',
-      age: '',
-      phone: '',
+      gender: savedUserInfo?.gender || '',
+      age: savedUserInfo?.age || '',
+      phone: savedUserInfo?.phone || '',
       invitationCode: result.codeInfo.code,
       userId: result.userId
     };

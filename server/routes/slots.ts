@@ -121,43 +121,116 @@ router.get('/available', async (req, res) => {
     ) as any[];
 
     const [bookedSlots] = await pool.execute(
-      `SELECT booking_date, start_time, end_time FROM bookings
+      `SELECT DATE_FORMAT(booking_date, '%Y-%m-%d') as booking_date, start_time, end_time, regular_user_name FROM bookings
        WHERE admin_user_id = ? AND status = 'confirmed'
          AND booking_date >= CURDATE() AND booking_date <= DATE_ADD(CURDATE(), INTERVAL 7 DAY)`,
       [adminUserId]
     ) as any[];
 
-    const bookedSet = new Set(bookedSlots.map((b: any) => `${b.booking_date}_${b.start_time}`));
+    // 标准化时间格式，去掉秒的部分
+    const formatTime = (time: string) => {
+      if (!time) return time;
+      const parts = time.split(':');
+      if (parts.length >= 2) {
+        return `${parts[0].padStart(2, '0')}:${parts[1].padStart(2, '0')}`;
+      }
+      return time;
+    };
+    
+    // 标准化日期格式为YYYY-MM-DD
+    const formatDate = (date: any) => {
+      if (!date) return date;
+      if (typeof date === 'string') {
+        return date.split('T')[0];
+      }
+      return date;
+    };
+    
+    // 调试日志：查看bookedSlots的原始数据
+    console.log('=== bookedSlots 原始数据 ===');
+    bookedSlots.forEach((b: any) => {
+      const dateObj = b.booking_date;
+      console.log(`dateObj: ${dateObj}, typeof: ${typeof dateObj}`);
+      if (dateObj instanceof Date) {
+        console.log(`  Date methods - getFullYear(): ${dateObj.getFullYear()}, getMonth(): ${dateObj.getMonth()}, getDate(): ${dateObj.getDate()}`);
+        console.log(`  UTC methods - getUTCFullYear(): ${dateObj.getUTCFullYear()}, getUTCMonth(): ${dateObj.getUTCMonth()}, getUTCDate(): ${dateObj.getUTCDate()}`);
+        console.log(`  toISOString(): ${dateObj.toISOString()}`);
+        console.log(`  toLocaleDateString(): ${dateObj.toLocaleDateString()}`);
+      }
+      const formattedDate = formatDate(b.booking_date);
+      const formattedTime = formatTime(b.start_time);
+      console.log(`booking_date: ${b.booking_date}, formattedDate: ${formattedDate}, start_time: ${b.start_time}, formattedTime: ${formattedTime}, key: ${formattedDate}_${formattedTime}`);
+    });
+    
+    const bookedSet = new Set(bookedSlots.map((b: any) => `${formatDate(b.booking_date)}_${formatTime(b.start_time)}`));
+    const bookedInfoMap = new Map(bookedSlots.map((b: any) => [`${formatDate(b.booking_date)}_${formatTime(b.start_time)}`, b.regular_user_name]));
+    
+    console.log('=== bookedSet 内容 ===');
+    console.log(Array.from(bookedSet));
 
     const available: any[] = [];
+    const addedKeys = new Set<string>(); // 用于去重
+    
+    // 先处理特定时段（优先级更高）
+    const specificSlots = slots.filter((s: any) => s.slot_type === 'specific');
+    const regularSlots = slots.filter((s: any) => s.slot_type === 'regular');
+    
     for (let i = 0; i < 7; i++) {
       const date = new Date();
       date.setDate(now.getDate() + i);
       const dateStr = date.toISOString().split('T')[0];
       const day = date.getDay();
 
-      for (const slot of slots) {
-        let match = false;
-        if (slot.slot_type === 'regular' && slot.day_of_week === day) match = true;
-        if (slot.slot_type === 'specific' && slot.slot_date) {
+      // 先处理特定时段
+      for (const slot of specificSlots) {
+        if (slot.slot_date) {
           let slotDateStr = null;
           if (slot.slot_date instanceof Date) {
             slotDateStr = slot.slot_date.toISOString().split('T')[0];
           } else if (typeof slot.slot_date === 'string') {
             slotDateStr = slot.slot_date.split('T')[0];
           }
-          if (slotDateStr === dateStr) match = true;
+          if (slotDateStr === dateStr) {
+            const formattedStartTime = formatTime(slot.start_time);
+            const key = `${dateStr}_${formattedStartTime}`;
+            if (!addedKeys.has(key)) {
+              addedKeys.add(key);
+              const isBooked = bookedSet.has(key);
+              available.push({
+                id: slot.id,
+                date: dateStr,
+                dayOfWeek: day,
+                startTime: formattedStartTime,
+                endTime: formatTime(slot.end_time),
+                displayDate: date.toLocaleDateString('zh-CN', { month: 'long', day: 'numeric', weekday: 'short' }),
+                isBooked,
+                bookedByName: isBooked ? bookedInfoMap.get(key) : null
+              });
+            }
+          }
         }
+      }
 
-        if (match && !bookedSet.has(`${dateStr}_${slot.start_time}`)) {
-          available.push({
-            id: slot.id,
-            date: dateStr,
-            dayOfWeek: day,
-            startTime: slot.start_time,
-            endTime: slot.end_time,
-            displayDate: date.toLocaleDateString('zh-CN', { month: 'long', day: 'numeric', weekday: 'short' })
-          });
+      // 再处理常驻时段（只添加特定时段未覆盖的）
+      for (const slot of regularSlots) {
+        if (slot.day_of_week === day) {
+          const formattedStartTime = formatTime(slot.start_time);
+          const key = `${dateStr}_${formattedStartTime}`;
+          console.log(`处理常规时段: date=${dateStr}, slot.start_time=${slot.start_time}, formattedStartTime=${formattedStartTime}, key=${key}, isBooked=${bookedSet.has(key)}`);
+          if (!addedKeys.has(key)) {
+            addedKeys.add(key);
+            const isBooked = bookedSet.has(key);
+            available.push({
+              id: slot.id,
+              date: dateStr,
+              dayOfWeek: day,
+              startTime: formattedStartTime,
+              endTime: formatTime(slot.end_time),
+              displayDate: date.toLocaleDateString('zh-CN', { month: 'long', day: 'numeric', weekday: 'short' }),
+              isBooked,
+              bookedByName: isBooked ? bookedInfoMap.get(key) : null
+            });
+          }
         }
       }
     }

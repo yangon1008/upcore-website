@@ -39,8 +39,14 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onBack }) => {
 
   const loadBookings = async (adminUserId: string) => {
     try {
+      console.log('========== 前端加载预约列表 ==========');
       const data = await getBookings(adminUserId);
-      setBookings(data);
+      console.log('从后端获取的原始数据:', JSON.stringify(data, null, 2));
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const validBookings = data.filter((b) => new Date(b.bookingDate) >= today);
+      console.log('过滤后的预约列表:', JSON.stringify(validBookings, null, 2));
+      setBookings(validBookings);
     } catch (err) {
       console.error('加载预约列表失败:', err);
     }
@@ -140,7 +146,7 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onBack }) => {
               </div>
               <div>
                 <h4 className="text-sm font-medium text-gray-500">性别</h4>
-                <p className="text-gray-900">{selectedBooking.gender || '-'}</p>
+                <p className="text-gray-900">{selectedBooking.gender === 'male' ? '男' : selectedBooking.gender === 'female' ? '女' : selectedBooking.gender || '-'}</p>
               </div>
               <div>
                 <h4 className="text-sm font-medium text-gray-500">年龄</h4>
@@ -162,24 +168,50 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onBack }) => {
                   <p className="text-gray-900">-</p>
                 )}
               </div>
-              {selectedBooking.resume && (
-                <div>
-                  <h4 className="text-sm font-medium text-gray-500">简历</h4>
-                  <a href={selectedBooking.resume} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800">查看简历</a>
-                </div>
-              )}
-              {selectedBooking.video && (
-                <div>
-                  <h4 className="text-sm font-medium text-gray-500">视频</h4>
-                  <a href={selectedBooking.video} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800">查看视频</a>
-                </div>
-              )}
-              {selectedBooking.website && (
-                <div>
-                  <h4 className="text-sm font-medium text-gray-500">个人网站</h4>
-                  <a href={selectedBooking.website} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800">访问网站</a>
-                </div>
-              )}
+              {(() => {
+                console.log('========== 显示文件信息 ==========');
+                console.log('selectedBooking:', selectedBooking);
+                console.log('selectedBooking.files:', selectedBooking.files);
+                console.log('selectedBooking.files 类型:', typeof selectedBooking.files);
+                console.log('是否为数组:', Array.isArray(selectedBooking.files));
+                console.log('数组长度:', Array.isArray(selectedBooking.files) ? selectedBooking.files.length : 0);
+                
+                const hasFiles = Array.isArray(selectedBooking.files) && selectedBooking.files.length > 0;
+                console.log('是否有文件显示:', hasFiles);
+                
+                if (hasFiles) {
+                  return (
+                    <div>
+                      <h4 className="text-sm font-medium text-gray-500 mb-2">文件</h4>
+                      <div className="space-y-2">
+                        {selectedBooking.files.map((file: any, index: number) => {
+                          console.log(`文件 ${index}:`, file);
+                          return (
+                            <div key={index} className="flex items-center justify-between bg-gray-50 p-3 rounded-md">
+                              <span className="text-sm text-gray-900 truncate flex-1">
+                                {file.originalname || file.filename || (() => {
+                                  try {
+                                    const url = new URL(file.url);
+                                    const pathParts = url.pathname.split('/');
+                                    return pathParts[pathParts.length - 1] || '文件';
+                                  } catch {
+                                    return '文件';
+                                  }
+                                })()}
+                              </span>
+                              <div className="flex items-center space-x-2 ml-3">
+                                <a href={file.url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 text-sm font-medium">查看</a>
+                                <a href={file.url} download className="text-green-600 hover:text-green-800 text-sm font-medium">下载</a>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                }
+                return null;
+              })()}
               {selectedBooking.introduction && (
                 <div>
                   <h4 className="text-sm font-medium text-gray-500">个人介绍</h4>

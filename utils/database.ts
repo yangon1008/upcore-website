@@ -4,6 +4,7 @@ const SLOTS_BASE = `${API_BASE}/slots`;
 const BOOKINGS_BASE = `${API_BASE}/bookings`;
 const FEISHU_BASE = `${API_BASE}/feishu`;
 const JOB_POSITIONS_BASE = `${API_BASE}/job-positions`;
+const USERS_BASE = `${API_BASE}/users`;
 
 export interface InvitationCodeData {
   id?: number;
@@ -42,6 +43,8 @@ export interface AvailableSlotData {
   startTime: string;
   endTime: string;
   displayDate: string;
+  isBooked?: boolean;
+  bookedByName?: string | null;
 }
 
 export interface BookingData {
@@ -53,6 +56,12 @@ export interface BookingData {
   feishuMeetingUrl: string | null;
   status: string;
   createdAt: string;
+  gender?: string;
+  age?: string;
+  phone?: string;
+  files?: any[];
+  introduction?: string;
+  jobPositionName?: string;
 }
 
 export interface CreateBookingResult {
@@ -83,6 +92,22 @@ export interface JobPositionData {
   createdAt: string;
 }
 
+export interface UserInfoData {
+  id?: number;
+  userId: string;
+  name: string;
+  gender?: string;
+  age?: string;
+  phone?: string;
+  jobPositionId?: number;
+  jobPositionName?: string;
+  introduction?: string;
+  files?: any[];
+  avatarUrl?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export async function generateCode(adminUserId: string, adminUserName: string, expireDays: number = 7): Promise<InvitationCodeData> {
   const res = await fetch(CODES_BASE, {
     method: 'POST',
@@ -110,6 +135,41 @@ export async function verifyCode(code: string, userName: string): Promise<Verify
   const data = await res.json();
   if (!data.success) throw new Error(data.error || '邀请码验证失败');
   return data.data;
+}
+
+export async function updateInvitationCodeInfo(
+  code: string,
+  data: {
+    jobPositionId?: number;
+    jobPositionName?: string;
+    usedByFiles?: any[];
+    usedByIntroduction?: string;
+    usedByGender?: string;
+    usedByAge?: string;
+    usedByPhone?: string;
+  }
+): Promise<void> {
+  const res = await fetch(`${CODES_BASE}/${code}/info`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  });
+  const result = await res.json();
+  if (!result.success) throw new Error(result.error || '更新邀请码信息失败');
+}
+
+export async function getInvitationCodeUserInfo(code: string): Promise<UserInfoData | null> {
+  const res = await fetch(`${CODES_BASE}/${encodeURIComponent(code)}/user-info`);
+  const data = await res.json();
+  if (!data.success) return null;
+  return data.userInfo;
+}
+
+export async function getUserInfoFromInvitationCode(userId: string): Promise<UserInfoData | null> {
+  const res = await fetch(`${CODES_BASE}/user/${encodeURIComponent(userId)}`);
+  const data = await res.json();
+  if (!data.success) return null;
+  return data.userInfo;
 }
 
 export async function getAdminSlots(adminUserId: string): Promise<SlotData[]> {
@@ -297,4 +357,59 @@ export async function addEventAttendees(eventId: string, calendarId: string, att
   const data = await res.json();
   if (!data.success) throw new Error(data.error || '添加日程参与人失败');
   return data.data;
+}
+
+// 用户信息相关 API
+export async function getUserInfo(userId: string): Promise<UserInfoData | null> {
+  const res = await fetch(`${USERS_BASE}/${encodeURIComponent(userId)}`);
+  const data = await res.json();
+  if (!data.success) return null;
+  return data.userInfo;
+}
+
+export async function saveUserInfo(userInfo: UserInfoData): Promise<void> {
+  const res = await fetch(`${USERS_BASE}/save`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      userId: userInfo.userId,
+      name: userInfo.name,
+      gender: userInfo.gender,
+      age: userInfo.age,
+      phone: userInfo.phone,
+      avatarUrl: userInfo.avatarUrl
+    })
+  });
+  const data = await res.json();
+  if (!data.success) throw new Error(data.message || '保存用户信息失败');
+}
+
+export async function saveFeishuToken(userId: string, accessToken: string, refreshToken?: string, expiresIn?: number, name?: string, avatarUrl?: string, mobile?: string, email?: string): Promise<void> {
+  const res = await fetch(`${USERS_BASE}/save-feishu-token`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      userId,
+      accessToken,
+      refreshToken,
+      expiresIn,
+      name,
+      avatarUrl,
+      mobile,
+      email
+    })
+  });
+  const data = await res.json();
+  if (!data.success) throw new Error(data.message || '保存飞书令牌失败');
+}
+
+export async function getFeishuToken(userId: string): Promise<{
+  accessToken: string | null;
+  refreshToken: string | null;
+  expiresAt: string | null;
+} | null> {
+  const res = await fetch(`${USERS_BASE}/${encodeURIComponent(userId)}/feishu-token`);
+  const data = await res.json();
+  if (!data.success) return null;
+  return data.tokenInfo;
 }

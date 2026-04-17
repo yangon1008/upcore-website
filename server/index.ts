@@ -7,6 +7,7 @@ import bookingsRoutes from './routes/bookings';
 import feishuRoutes from './routes/feishu';
 import jobPositionsRoutes from './routes/jobPositions';
 import filesRoutes from './routes/files';
+import usersRoutes from './routes/users';
 import { initializeDatabase } from './db/connection';
 
 const app = express();
@@ -14,6 +15,37 @@ const PORT = parseInt(process.env.PORT || '3001');
 
 app.use(cors());
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// 添加全局请求日志中间件
+app.use((req, res, next) => {
+  console.log('========== 收到请求 ==========');
+  console.log('方法:', req.method);
+  console.log('URL:', req.url);
+  console.log('请求体:', JSON.stringify(req.body, null, 2));
+  console.log('==============================');
+  
+  // 保存原始的 json 方法
+  const originalJson = res.json;
+  const originalSend = res.send;
+  
+  // 重写 json 方法以捕获响应数据
+  res.json = function(data: any) {
+    console.log('========== 返回响应 ==========');
+    console.log('URL:', req.url);
+    console.log('响应数据:', JSON.stringify(data, null, 2));
+    console.log('==============================');
+    return originalJson.call(this, data);
+  };
+  
+  next();
+});
+
+// 设置默认 Content-Type 为 UTF-8
+app.use((req, res, next) => {
+  res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  next();
+});
 
 app.use('/api/invitation-codes', invitationCodesRoutes);
 app.use('/api/slots', slotsRoutes);
@@ -21,6 +53,7 @@ app.use('/api/bookings', bookingsRoutes);
 app.use('/api/feishu', feishuRoutes);
 app.use('/api/job-positions', jobPositionsRoutes);
 app.use('/api/files', filesRoutes);
+app.use('/api/users', usersRoutes);
 
 // 配置静态文件服务，提供上传的文件
 app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));

@@ -5,6 +5,22 @@ import fs from 'fs';
 
 const router = express.Router();
 
+// 修复文件名乱码问题
+function decodeFilename(filename: string): string {
+  try {
+    // 尝试直接使用 Buffer.from 解码
+    return Buffer.from(filename, 'latin1').toString('utf8');
+  } catch (e) {
+    try {
+      // 如果失败，尝试另一种方式
+      return decodeURIComponent(escape(filename));
+    } catch (e2) {
+      // 如果还失败，返回原始文件名
+      return filename;
+    }
+  }
+}
+
 // 确保上传目录存在
 const uploadDir = path.join(process.cwd(), 'uploads');
 if (!fs.existsSync(uploadDir)) {
@@ -60,7 +76,7 @@ router.post('/upload', upload.array('files', 10), (req, res) => {
 
     const files = req.files.map((file: Express.Multer.File) => ({
       filename: file.filename,
-      originalname: file.originalname,
+      originalname: decodeFilename(file.originalname),
       mimetype: file.mimetype,
       size: file.size,
       url: `/uploads/${file.filename}`
@@ -81,7 +97,7 @@ router.post('/upload/single', upload.single('file'), (req, res) => {
 
     const file = {
       filename: req.file.filename,
-      originalname: req.file.originalname,
+      originalname: decodeFilename(req.file.originalname),
       mimetype: req.file.mimetype,
       size: req.file.size,
       url: `/uploads/${req.file.filename}`

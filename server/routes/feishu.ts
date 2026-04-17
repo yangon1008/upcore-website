@@ -19,7 +19,7 @@ router.post('/auth/app-access-token', async (req, res) => {
     res.json(data);
   } catch (error: any) {
     console.error('获取 App Access Token 失败:', error.message);
-    res.status(500).json({ code: -1, msg: '服务器内部错误' });
+    res.status(500).json({ code: -1, msg: '获取 App Access Token 失败' });
   }
 });
 
@@ -40,7 +40,7 @@ router.post('/auth/user-access-token', async (req, res) => {
     res.json(data);
   } catch (error: any) {
     console.error('获取 User Access Token 失败:', error.message);
-    res.status(500).json({ code: -1, msg: '服务器内部错误' });
+    res.status(500).json({ code: -1, msg: '获取 User Access Token 失败' });
   }
 });
 
@@ -57,7 +57,7 @@ router.get('/auth/user-info', async (req, res) => {
     res.json(data);
   } catch (error: any) {
     console.error('获取用户信息失败:', error.message);
-    res.status(500).json({ code: -1, msg: '服务器内部错误' });
+    res.status(500).json({ code: -1, msg: '获取用户信息失败' });
   }
 });
 
@@ -79,7 +79,7 @@ router.post('/calendar/freebusy', async (req, res) => {
     res.json(data);
   } catch (error: any) {
     console.error('获取忙闲信息失败:', error.message);
-    res.status(500).json({ code: -1, msg: '服务器内部错误' });
+    res.status(500).json({ code: -1, msg: '获取忙闲信息失败' });
   }
 });
 
@@ -100,7 +100,7 @@ router.post('/calendar/events', async (req, res) => {
     res.json(data);
   } catch (error: any) {
     console.error('创建日程失败:', error.message);
-    res.status(500).json({ code: -1, msg: '服务器内部错误' });
+    res.status(500).json({ code: -1, msg: '创建日程失败' });
   }
 });
 
@@ -119,7 +119,7 @@ router.delete('/calendar/events/:eventId', async (req, res) => {
     res.json(data);
   } catch (error: any) {
     console.error('取消日程失败:', error.message);
-    res.status(500).json({ code: -1, msg: '服务器内部错误' });
+    res.status(500).json({ code: -1, msg: '取消日程失败' });
   }
 });
 

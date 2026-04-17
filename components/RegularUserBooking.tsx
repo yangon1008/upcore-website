@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { RegularUser } from '../utils/feishu';
-import { verifyCode, getAvailableSlots, createBooking, cancelBooking, getUserBooking, getJobPositions, AvailableSlotData, CreateBookingResult, VerifyResult, UserBookingData, JobPositionData } from '../utils/database';
+import { verifyCode, getAvailableSlots, createBooking, cancelBooking, getUserBooking, getJobPositions, updateInvitationCodeInfo, getInvitationCodeUserInfo, AvailableSlotData, CreateBookingResult, VerifyResult, UserBookingData, JobPositionData } from '../utils/database';
 import UserInfoForm from './UserInfoForm';
 
 interface RegularUserBookingProps {
@@ -21,7 +21,15 @@ const RegularUserBooking: React.FC<RegularUserBookingProps> = ({ user, onRefresh
   const [selectedDate, setSelectedDate] = useState<string>('');
   const [refreshing, setRefreshing] = useState(false);
   const [currentStep, setCurrentStep] = useState<'info' | 'booking' | 'success'>('info');
-  const [userInfo, setUserInfo] = useState({
+  const [userInfo, setUserInfo] = useState<{
+    gender: string;
+    age: string;
+    phone: string;
+    jobPositionId: number;
+    jobPositionName: string;
+    introduction: string;
+    files: any[];
+  }>({
     gender: user.gender || 'male',
     age: user.age || '',
     phone: user.phone || '',
@@ -61,6 +69,31 @@ const RegularUserBooking: React.FC<RegularUserBookingProps> = ({ user, onRefresh
       setAdminInfo({ adminUserId: result.codeInfo.adminUserId, adminUserName: result.codeInfo.adminUserName });
       setInvitationCodeInfo({ expiresAt: result.codeInfo.expiresAt });
 
+      // 尝试从 invitation_codes 表加载用户已保存的信息
+      try {
+        const savedUserInfo = await getInvitationCodeUserInfo(user.invitationCode);
+        if (savedUserInfo) {
+          setUserInfo({
+            gender: savedUserInfo.gender || 'male',
+            age: savedUserInfo.age || '',
+            phone: savedUserInfo.phone || '',
+            jobPositionId: savedUserInfo.jobPositionId || 0,
+            jobPositionName: savedUserInfo.jobPositionName || '',
+            introduction: savedUserInfo.introduction || '',
+            files: savedUserInfo.files ? savedUserInfo.files.map((file: any) => ({
+              id: Math.random().toString(36).substr(2, 9),
+              url: file.url,
+              filename: file.filename || 'file',
+              originalname: file.originalname || 'file',
+              mimetype: file.mimetype || 'application/octet-stream',
+              size: file.size || 0
+            })) : [] as any[]
+          });
+        }
+      } catch (infoErr) {
+        console.log('没有找到已保存的用户信息，使用默认值');
+      }
+
       const [positions] = await Promise.all([
         getJobPositions(result.codeInfo.adminUserId)
       ]);
@@ -99,6 +132,23 @@ const RegularUserBooking: React.FC<RegularUserBookingProps> = ({ user, onRefresh
     setLoading(true);
     try {
       setUserInfo(data);
+      
+      // 保存所有信息到邀请码表
+      try {
+        const usedByFiles = data.files && data.files.length > 0 ? data.files : undefined;
+        await updateInvitationCodeInfo(user.invitationCode, {
+          jobPositionId: data.jobPositionId,
+          jobPositionName: data.jobPositionName,
+          usedByFiles: usedByFiles,
+          usedByIntroduction: data.introduction,
+          usedByGender: data.gender,
+          usedByAge: data.age,
+          usedByPhone: data.phone
+        });
+      } catch (error) {
+        console.error('保存用户信息失败:', error);
+      }
+      
       // 加载可用的面试场次
       if (adminInfo && invitationCodeInfo) {
         const slots = await getAvailableSlots(adminInfo.adminUserId);
@@ -126,6 +176,11 @@ const RegularUserBooking: React.FC<RegularUserBookingProps> = ({ user, onRefresh
 
   const handleBook = async () => {
     if (!selectedSlot || !adminInfo) return;
+    if (selectedSlot.isBooked) {
+      setError('该场次已被预约');
+      setTimeout(() => setError(''), 1500);
+      return;
+    }
     setBookingStatus('booking');
     setError('');
     try {
@@ -168,7 +223,7 @@ const RegularUserBooking: React.FC<RegularUserBookingProps> = ({ user, onRefresh
 
   const maskName = (name: string) => name ? name.charAt(0) + '*' : '';
 
-  const uniqueDates = [...new Set(availableSlots.map(slot => slot.date))].sort();
+  const uniqueDates: string[] = [...new Set<string>(availableSlots.map(slot => slot.date))].sort();
   const slotsByDate: Record<string, AvailableSlotData[]> = availableSlots.reduce((acc, slot) => {
     if (!acc[slot.date]) acc[slot.date] = [];
     acc[slot.date].push(slot);
@@ -200,19 +255,39 @@ const RegularUserBooking: React.FC<RegularUserBookingProps> = ({ user, onRefresh
     <div className="mb-8">
       <div className="flex items-center justify-between">
         <div className="flex-1 flex items-center">
-          <div className={`w-8 h-8 rounded-full flex items-center justify-center ${currentStep === 'info' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-500'}`}>
+          <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+            currentStep === 'info' || currentStep === 'booking' || currentStep === 'success'
+              ? 'bg-blue-600 text-white'
+              : 'bg-gray-200 text-gray-500'
+          }`}>
             1
           </div>
-          <div className={`h-1 flex-1 mx-2 ${currentStep === 'info' ? 'bg-gray-200' : 'bg-blue-600'}`} style={{ width: '140px' }}></div>
+          <div className={`h-1 flex-1 mx-2 ${
+            currentStep === 'info' || currentStep === 'booking' || currentStep === 'success'
+              ? 'bg-blue-600'
+              : 'bg-gray-200'
+          }`} style={{ width: '140px' }}></div>
         </div>
         <div className="flex-1 flex items-center">
-          <div className={`w-8 h-8 rounded-full flex items-center justify-center ${currentStep === 'booking' ? 'bg-blue-600 text-white' : currentStep === 'success' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-500'}`}>
+          <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+            currentStep === 'booking' || currentStep === 'success'
+              ? 'bg-blue-600 text-white'
+              : 'bg-gray-200 text-gray-500'
+          }`}>
             2
           </div>
-          <div className={`h-1 flex-1 mx-2 ${currentStep === 'booking' ? 'bg-gray-200' : currentStep === 'success' ? 'bg-blue-600' : 'bg-gray-200'}`} style={{ width: '140px' }}></div>
+          <div className={`h-1 flex-1 mx-2 ${
+            currentStep === 'booking' || currentStep === 'success'
+              ? 'bg-blue-600'
+              : 'bg-gray-200'
+          }`} style={{ width: '140px' }}></div>
         </div>
         <div className="flex items-center justify-center" style={{ width: '32px' }}>
-          <div className={`w-8 h-8 rounded-full flex items-center justify-center ${currentStep === 'success' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-500'}`}>
+          <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+            currentStep === 'success'
+              ? 'bg-blue-600 text-white'
+              : 'bg-gray-200 text-gray-500'
+          }`}>
             3
           </div>
         </div>
@@ -289,6 +364,8 @@ const RegularUserBooking: React.FC<RegularUserBookingProps> = ({ user, onRefresh
               <div className="flex space-x-2 min-w-max">
                 {uniqueDates.map((date) => {
                   const firstSlot = slotsByDate[date][0];
+                  const totalSlots = slotsByDate[date].length;
+                  const availableCount = slotsByDate[date].filter(s => !s.isBooked).length;
                   return (
                     <button
                       key={date}
@@ -303,7 +380,9 @@ const RegularUserBooking: React.FC<RegularUserBookingProps> = ({ user, onRefresh
                       }`}
                     >
                       <div className="font-medium text-sm text-gray-900">{firstSlot.displayDate}</div>
-                      <div className="text-xs text-gray-500 mt-0.5">{slotsByDate[date].length} 场可约</div>
+                      <div className="text-xs text-gray-500 mt-0.5">
+                        {availableCount} 场可约
+                      </div>
                     </button>
                   );
                 })}
@@ -314,19 +393,34 @@ const RegularUserBooking: React.FC<RegularUserBookingProps> = ({ user, onRefresh
               <div className="space-y-3">
                 <h4 className="text-sm font-medium text-gray-600">可预约场次</h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {currentSlots.map((slot) => (
-                    <button
-                      key={`${slot.date}_${slot.startTime}`}
-                      onClick={() => setSelectedSlot(selectedSlot?.date === slot.date && selectedSlot?.startTime === slot.startTime ? null : slot)}
-                      className={`text-left p-4 rounded-xl border-2 transition-all ${
-                        selectedSlot?.date === slot.date && selectedSlot?.startTime === slot.startTime
-                          ? 'border-blue-500 bg-blue-50 shadow-sm'
-                          : 'border-gray-200 hover:border-blue-300 hover:bg-gray-50'
-                      }`}
-                    >
-                      <div className="text-lg font-semibold text-gray-900">{slot.startTime} - {slot.endTime}</div>
-                    </button>
-                  ))}
+                  {currentSlots.map((slot) => {
+                    const isSelected = selectedSlot?.date === slot.date && selectedSlot?.startTime === slot.startTime;
+                    const isBooked = slot.isBooked;
+                    return (
+                      <button
+                        key={`${slot.date}_${slot.startTime}`}
+                        onClick={() => {
+                          if (isBooked) return;
+                          setSelectedSlot(isSelected ? null : slot);
+                        }}
+                        disabled={isBooked}
+                        className={`flex flex-col items-center justify-center px-4 py-2 rounded-xl border-2 transition-all h-[54px] ${
+                          isBooked
+                            ? 'border-gray-300 bg-gray-100 cursor-not-allowed opacity-75'
+                            : isSelected
+                              ? 'border-blue-500 bg-blue-50 shadow-sm'
+                              : 'border-gray-200 hover:border-blue-300 hover:bg-gray-50'
+                        }`}
+                      >
+                        <div className={`text-lg font-semibold text-center ${isBooked ? 'text-gray-500' : 'text-gray-900'}`}>
+                          {slot.startTime} - {slot.endTime}
+                        </div>
+                        {isBooked && (
+                          <div className="text-sm text-gray-400">已被预约</div>
+                        )}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -414,12 +508,6 @@ const RegularUserBooking: React.FC<RegularUserBookingProps> = ({ user, onRefresh
         </div>
 
         <div className="flex space-x-4">
-          <button
-            onClick={() => setCurrentStep('booking')}
-            className="flex-1 px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-medium"
-          >
-            上一步
-          </button>
           <button
             onClick={handleCancel}
             className="flex-1 px-4 py-3 text-red-600 border border-red-300 rounded-lg hover:bg-red-50 transition-colors font-medium"

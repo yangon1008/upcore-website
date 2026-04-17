@@ -1,5 +1,6 @@
 import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
 import { feishuService, FeishuUser, RegularUser, User } from '../utils/feishu';
+import { saveFeishuToken } from '../utils/database';
 
 interface AuthContextType {
   user: User | null;
@@ -38,11 +39,28 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         window.history.replaceState({}, document.title, window.location.pathname);
         
         // 使用 code 获取用户访问凭证
-        await feishuService.getUserAccessToken(authCode);
+        const tokenInfo = await feishuService.getUserAccessToken(authCode);
         
         // 获取用户信息
         const userInfo = await feishuService.getUserInfo();
         if (userInfo) {
+          // 保存飞书令牌到后端
+          try {
+            await saveFeishuToken(
+              userInfo.user_id,
+              tokenInfo.access_token,
+              tokenInfo.refresh_token,
+              tokenInfo.expires_in,
+              userInfo.name,
+              userInfo.avatar_url,
+              userInfo.mobile,
+              userInfo.email
+            );
+            console.log('飞书令牌保存成功');
+          } catch (tokenErr) {
+            console.error('保存飞书令牌失败:', tokenErr);
+          }
+          
           setUser({ ...userInfo, type: 'feishu' });
           setLoading(false);
           return;
@@ -52,6 +70,26 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       // 然后检查是否有已存在的飞书用户（通过 localStorage 中的 token）
       const userInfo = await feishuService.getUserInfo();
       if (userInfo) {
+        // 如果本地有 token 但后端没有，尝试保存到后端
+        const localToken = localStorage.getItem('feishu_user_token');
+        const localRefreshToken = localStorage.getItem('feishu_user_refresh_token');
+        if (localToken) {
+          try {
+            await saveFeishuToken(
+              userInfo.user_id, 
+              localToken, 
+              localRefreshToken || undefined,
+              undefined,
+              userInfo.name,
+              userInfo.avatar_url,
+              userInfo.mobile,
+              userInfo.email
+            );
+          } catch (tokenErr) {
+            console.error('保存现有飞书令牌失败:', tokenErr);
+          }
+        }
+        
         setUser({ ...userInfo, type: 'feishu' });
       } else {
         setUser(null);

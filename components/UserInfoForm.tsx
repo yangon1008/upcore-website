@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { JobPositionData } from '../utils/database';
+import React, { useState, useEffect } from 'react';
+import { JobPositionData, updateInvitationCodeInfo } from '../utils/database';
 
 interface UploadedFile {
   id: string;
@@ -41,21 +41,67 @@ const UserInfoForm: React.FC<UserInfoFormProps> = ({
   loading = false,
   initialData
 }) => {
-  const [formData, setFormData] = useState({
-    gender: initialData?.gender || 'male',
-    age: initialData?.age || '',
-    phone: initialData?.phone || '',
-    jobPositionId: initialData?.jobPositionId || 0,
-    jobPositionName: initialData?.jobPositionName || '',
-    introduction: initialData?.introduction || '',
-    files: initialData?.files || [] as UploadedFile[]
-  });
+  // 从 URL 获取邀请码，用于 localStorage 的 key
+  const invitationCode = window.location.search.split('invitationCode=')[1] || 'default';
+  const STORAGE_KEY = `userInfoForm_${invitationCode}`;
+
+  // 初始化：先尝试从 localStorage 加载，再使用 initialData
+  const getInitialFormData = () => {
+    try {
+      const savedData = localStorage.getItem(STORAGE_KEY);
+      if (savedData) {
+        const parsed = JSON.parse(savedData);
+        return {
+          gender: parsed.gender || initialData?.gender || 'male',
+          age: parsed.age || initialData?.age || '',
+          phone: parsed.phone || initialData?.phone || '',
+          jobPositionId: parsed.jobPositionId || initialData?.jobPositionId || 0,
+          jobPositionName: parsed.jobPositionName || initialData?.jobPositionName || '',
+          introduction: parsed.introduction || initialData?.introduction || '',
+          files: parsed.files || initialData?.files || [] as UploadedFile[]
+        };
+      }
+    } catch (e) {
+      console.log('从 localStorage 加载表单数据失败:', e);
+    }
+    return {
+      gender: initialData?.gender || 'male',
+      age: initialData?.age || '',
+      phone: initialData?.phone || '',
+      jobPositionId: initialData?.jobPositionId || 0,
+      jobPositionName: initialData?.jobPositionName || '',
+      introduction: initialData?.introduction || '',
+      files: initialData?.files || [] as UploadedFile[]
+    };
+  };
+
+  const [formData, setFormData] = useState(getInitialFormData);
+  
+  
   
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [dragOver, setDragOver] = useState(false);
   
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // 自动保存到 localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(formData));
+    } catch (e) {
+      console.log('保存表单数据到 localStorage 失败:', e);
+    }
+  }, [formData, STORAGE_KEY]);
+
+  // 提交成功后清除 localStorage
+  const clearStoredData = () => {
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+    } catch (e) {
+      console.log('清除 localStorage 数据失败:', e);
+    }
+  };
 
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
@@ -84,9 +130,32 @@ const UserInfoForm: React.FC<UserInfoFormProps> = ({
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (validateForm()) {
+      try {
+        const invitationCode = window.location.search.split('invitationCode=')[1];
+        
+        // 保存所有信息到邀请码表
+        if (invitationCode) {
+          const usedByFiles = formData.files.length > 0 ? formData.files : undefined;
+          await updateInvitationCodeInfo(invitationCode, {
+            jobPositionId: formData.jobPositionId,
+            jobPositionName: formData.jobPositionName,
+            usedByFiles: usedByFiles,
+            usedByIntroduction: formData.introduction,
+            usedByGender: formData.gender,
+            usedByAge: formData.age,
+            usedByPhone: formData.phone
+          });
+        }
+        
+        // 提交成功后清除 localStorage
+        clearStoredData();
+      } catch (error) {
+        console.error('保存用户信息失败:', error);
+      }
+      
       onSubmit({
         gender: formData.gender,
         age: formData.age,
@@ -395,15 +464,6 @@ const UserInfoForm: React.FC<UserInfoFormProps> = ({
 
         {/* 按钮 */}
         <div className="flex space-x-4 pt-4 border-t border-gray-200">
-          {onBack && (
-            <button
-              type="button"
-              onClick={onBack}
-              className="flex-1 px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-medium"
-            >
-              上一步
-            </button>
-          )}
           <button
             type="submit"
             disabled={loading}

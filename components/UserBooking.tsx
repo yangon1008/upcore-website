@@ -264,7 +264,7 @@ const UserBooking: React.FC = () => {
               <div className="grid grid-cols-1 gap-3">
                 {availableSlots.map((slot) => (
                   <button
-                    key={slot.id + slot.date}
+                    key={`${slot.date}_${slot.startTime}`}
                     onClick={() => handleBooking(slot)}
                     className="text-left p-4 border rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-all"
                   >

@@ -29,7 +29,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ user, onRefresh }) => {
         getAdminSlots(user.user_id),
         getJobPositions(user.user_id)
       ]);
-      setInvitationCodes(codes);
+      const now = new Date();
+      const validCodes = codes.filter(code => new Date(code.expiresAt) > now);
+      setInvitationCodes(validCodes);
       setSlots(slotsData);
       setJobPositions(positionsData);
     } catch (err) {
@@ -193,8 +195,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ user, onRefresh }) => {
                 <span>{showAllCodes ? '收起历史邀请码' : `查看更多 ${invitationCodes.length - 1} 个邀请码`}</span>
               </button>
             )}
-            {displayedCodes.map((codeItem, index) => (
-              <div key={index} className="bg-white p-4 rounded-md border border-gray-200">
+            {displayedCodes.map((codeItem) => (
+              <div key={codeItem.code} className="bg-white p-4 rounded-md border border-gray-200">
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center space-x-3">
                     <code className="text-lg font-mono font-bold text-blue-600 bg-blue-50 px-3 py-1 rounded">{codeItem.code}</code>
@@ -314,10 +316,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ user, onRefresh }) => {
           <button onClick={addRegularSlot} className="text-sm text-blue-600 hover:text-blue-800 font-medium">+ {t('interview.addSlot')}</button>
         </div>
         <div className="space-y-3">
-          {regularSlots.map((slot, idx) => {
+          {regularSlots.map((slot) => {
             const globalIdx = slots.indexOf(slot);
             return (
-              <div key={globalIdx} className="flex items-center justify-between bg-white p-3 border rounded-md shadow-sm">
+              <div key={`regular-${slot.id || globalIdx}`} className="flex items-center justify-between bg-white p-3 border rounded-md shadow-sm">
                 <div className="flex items-center space-x-3">
                   <select value={slot.dayOfWeek ?? 1} onChange={(e) => updateSlotLocal(globalIdx, { dayOfWeek: parseInt(e.target.value) })} className="border-gray-300 rounded-md text-sm p-1 border">
                     {[1, 2, 3, 4, 5, 6, 0].map(d => <option key={d} value={d}>{['周日', '周一', '周二', '周三', '周四', '周五', '周六'][d]}</option>)}
@@ -342,7 +344,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ user, onRefresh }) => {
           {specificSlots.map((slot) => {
             const globalIdx = slots.indexOf(slot);
             return (
-              <div key={globalIdx} className="flex items-center justify-between bg-white p-3 border rounded-md shadow-sm">
+              <div key={`specific-${slot.id || globalIdx}`} className="flex items-center justify-between bg-white p-3 border rounded-md shadow-sm">
                 <div className="flex items-center space-x-3">
                   <input type="date" value={slot.slotDate || ''} onChange={(e) => updateSlotLocal(globalIdx, { slotDate: e.target.value })} className="border-gray-300 rounded-md text-sm p-1 border" />
                   <input type="time" value={slot.startTime} onChange={(e) => updateSlotLocal(globalIdx, { startTime: e.target.value })} className="border-gray-300 rounded-md text-sm p-1 border" />
