@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { feishuService, FeishuUser } from '../utils/feishu';
-import { generateCode, getCodes, getAdminSlots, saveSlot, updateSlot, deleteSlot, getJobPositions, createJobPosition, updateJobPosition, deleteJobPosition, InvitationCodeData, SlotData, JobPositionData } from '../utils/database';
+import { generateCode, getCodes, getAdminSlots, getJobPositions, createJobPosition, updateJobPosition, deleteJobPosition, InvitationCodeData, SlotData, JobPositionData } from '../utils/database';
+import InterviewCalendar from './InterviewCalendar';
 
 interface AdminPanelProps {
   user: FeishuUser & { type?: 'feishu' };
@@ -16,7 +17,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ user, onRefresh }) => {
   const [showAllCodes, setShowAllCodes] = useState(false);
   const [expireDays, setExpireDays] = useState(7);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [newPositionName, setNewPositionName] = useState('');
   const [newPositionDescription, setNewPositionDescription] = useState('');
@@ -83,45 +83,17 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ user, onRefresh }) => {
     return Math.ceil((expire.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
   };
 
-  const saveSettings = async () => {
-    setSaving(true);
-    try {
-      for (const slot of slots) {
-        if (slot.id) {
-          await updateSlot(slot.id, slot);
-        } else {
-          await saveSlot({ ...slot, adminUserId: user.user_id });
-        }
-      }
-      const fresh = await getAdminSlots(user.user_id);
-      setSlots(fresh);
-      alert(t('interview.save') + '成功');
-    } catch (err: any) {
-      alert('保存失败: ' + (err.message || '未知错误'));
-    } finally {
-      setSaving(false);
-    }
-  };
-
   const addRegularSlot = () => {
     setSlots([...slots, { slotType: 'regular', dayOfWeek: 1, startTime: '09:00', endTime: '10:00' }]);
   };
 
   const addSpecificSlot = () => {
-    setSlots([...slots, { slotType: 'specific', slotDate: new Date().toISOString().split('T')[0], startTime: '09:00', endTime: '10:00' }]);
-  };
-
-  const removeSlot = async (slot: SlotData) => {
-    if (!slot.id) {
-      setSlots(slots.filter(s => s !== slot));
-      return;
-    }
-    try {
-      await deleteSlot(slot.id);
-      setSlots(slots.filter(s => s.id !== slot.id));
-    } catch (err: any) {
-      alert('删除失败: ' + err.message);
-    }
+    const date = new Date();
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const dateStr = `${year}-${month}-${day}`;
+    setSlots([...slots, { slotType: 'specific', slotDate: dateStr, startTime: '09:00', endTime: '10:00' }]);
   };
 
   const updateSlotLocal = (index: number, updates: Partial<SlotData>) => {
@@ -223,81 +195,107 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ user, onRefresh }) => {
         {invitationCodes.length === 0 && <p className="text-gray-500 text-sm">暂无邀请码，请点击上方按钮生成</p>}
       </div>
 
+      {/* 面试时间日历管理 */}
+      <div>
+        <div className="mb-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-medium text-gray-900">面试时间安排</h3>
+            <div className="flex items-center space-x-4 text-xs">
+              <div className="flex items-center space-x-1.5">
+                <div className="w-4 h-4 rounded border-l-[3px] border-blue-500 bg-blue-50/80"></div>
+                <span className="text-gray-600">特定时段</span>
+              </div>
+              <div className="flex items-center space-x-1.5">
+                <div className="w-4 h-4 rounded border-l-[3px] border-green-500 bg-green-50/80"></div>
+                <span className="text-gray-600">固定时段</span>
+              </div>
+            </div>
+          </div>
+          <p className="text-sm text-gray-500 mt-1">点击日历空白处添加面试时间段，点击已有时段可编辑或删除</p>
+        </div>
+
+        <InterviewCalendar
+          slots={slots}
+          onSlotChange={(newSlots) => setSlots(newSlots)}
+          adminUserId={user.user_id}
+        />
+      </div>
+
       <div>
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-medium text-gray-900">面试岗位管理</h3>
         </div>
-        <div className="bg-white p-4 rounded-md border border-gray-200 mb-4">
-          <h4 className="text-sm font-medium text-gray-700 mb-3">添加新岗位</h4>
-          <div className="space-y-3">
+        <div className="bg-white p-3 rounded-md border border-gray-200 mb-3">
+          <h4 className="text-sm font-medium text-gray-700 mb-2">添加新岗位</h4>
+          <div className="space-y-2">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">岗位名称</label>
-              <input 
-                type="text" 
-                value={newPositionName} 
-                onChange={(e) => setNewPositionName(e.target.value)} 
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              <label className="block text-xs font-medium text-gray-700 mb-1">岗位名称</label>
+              <input
+                type="text"
+                value={newPositionName}
+                onChange={(e) => setNewPositionName(e.target.value)}
+                className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 placeholder="请输入岗位名称"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">岗位描述</label>
-              <textarea 
-                value={newPositionDescription} 
-                onChange={(e) => setNewPositionDescription(e.target.value)} 
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                rows={3}
+              <label className="block text-xs font-medium text-gray-700 mb-1">岗位描述</label>
+              <textarea
+                value={newPositionDescription}
+                onChange={(e) => setNewPositionDescription(e.target.value)}
+                className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                rows={2}
                 placeholder="请输入岗位描述"
               />
             </div>
-            <button 
-              onClick={handleAddPosition} 
-              className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors text-sm font-medium"
+            <button
+              onClick={handleAddPosition}
+              className="bg-blue-600 text-white px-3 py-1.5 rounded-md hover:bg-blue-700 transition-colors text-sm font-medium"
             >
               添加岗位
             </button>
           </div>
         </div>
-        <div className="space-y-3">
+        <div className="space-y-2">
           {jobPositions.length > 0 ? (
             jobPositions.map((position) => (
-              <div key={position.id} className="bg-white p-4 rounded-md border border-gray-200">
-                <div className="flex items-center justify-between mb-3">
-                  <input 
-                    type="text" 
-                    value={position.positionName} 
-                    onChange={(e) => updatePositionLocal(position.id, { positionName: e.target.value })} 
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              <div key={position.id} className="bg-white p-3 rounded-md border border-gray-200">
+                <div className="flex items-center justify-between mb-2">
+                  <input
+                    type="text"
+                    value={position.positionName}
+                    onChange={(e) => updatePositionLocal(position.id, { positionName: e.target.value })}
+                    className="flex-1 px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
-                  <div className="flex items-center space-x-3">
+                  <div className="flex items-center space-x-2 ml-3">
                     <label className="flex items-center">
-                      <input 
-                        type="checkbox" 
-                        checked={position.isActive} 
-                        onChange={(e) => updatePositionLocal(position.id, { isActive: e.target.checked })} 
+                      <input
+                        type="checkbox"
+                        checked={position.isActive}
+                        onChange={(e) => updatePositionLocal(position.id, { isActive: e.target.checked })}
                         className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                       />
-                      <span className="ml-2 text-sm text-gray-700">启用</span>
+                      <span className="ml-1.5 text-xs text-gray-700">启用</span>
                     </label>
-                    <button 
-                      onClick={() => handleUpdatePosition(position)} 
-                      className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+                    <button
+                      onClick={() => handleUpdatePosition(position)}
+                      className="text-xs text-blue-600 hover:text-blue-800 font-medium px-2 py-1"
                     >
                       保存
                     </button>
-                    <button 
-                      onClick={() => handleDeletePosition(position.id)} 
-                      className="text-sm text-red-600 hover:text-red-800 font-medium"
+                    <button
+                      onClick={() => handleDeletePosition(position.id)}
+                      className="text-xs text-red-600 hover:text-red-800 font-medium px-2 py-1"
                     >
                       删除
                     </button>
                   </div>
                 </div>
                 <div>
-                  <textarea 
-                    value={position.description} 
-                    onChange={(e) => updatePositionLocal(position.id, { description: e.target.value })} 
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  <textarea
+                    value={position.description}
+                    onChange={(e) => updatePositionLocal(position.id, { description: e.target.value })}
+                    className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     rows={2}
                     placeholder="请输入岗位描述"
                   />
@@ -308,60 +306,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ user, onRefresh }) => {
             <p className="text-gray-500 text-sm">暂无岗位，请添加新岗位</p>
           )}
         </div>
-      </div>
-
-      <div>
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-medium text-gray-900">{t('interview.常驻时段')}</h3>
-          <button onClick={addRegularSlot} className="text-sm text-blue-600 hover:text-blue-800 font-medium">+ {t('interview.addSlot')}</button>
-        </div>
-        <div className="space-y-3">
-          {regularSlots.map((slot) => {
-            const globalIdx = slots.indexOf(slot);
-            return (
-              <div key={`regular-${slot.id || globalIdx}`} className="flex items-center justify-between bg-white p-3 border rounded-md shadow-sm">
-                <div className="flex items-center space-x-3">
-                  <select value={slot.dayOfWeek ?? 1} onChange={(e) => updateSlotLocal(globalIdx, { dayOfWeek: parseInt(e.target.value) })} className="border-gray-300 rounded-md text-sm p-1 border">
-                    {[1, 2, 3, 4, 5, 6, 0].map(d => <option key={d} value={d}>{['周日', '周一', '周二', '周三', '周四', '周五', '周六'][d]}</option>)}
-                  </select>
-                  <input type="time" value={slot.startTime} onChange={(e) => updateSlotLocal(globalIdx, { startTime: e.target.value })} className="border-gray-300 rounded-md text-sm p-1 border" />
-                  <span>-</span>
-                  <input type="time" value={slot.endTime} onChange={(e) => updateSlotLocal(globalIdx, { endTime: e.target.value })} className="border-gray-300 rounded-md text-sm p-1 border" />
-                </div>
-                <button onClick={() => removeSlot(slot)} className="text-red-500 hover:text-red-700">删除</button>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      <div>
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-medium text-gray-900">{t('interview.临时时段')}</h3>
-          <button onClick={addSpecificSlot} className="text-sm text-blue-600 hover:text-blue-800 font-medium">+ {t('interview.addSlot')}</button>
-        </div>
-        <div className="space-y-3">
-          {specificSlots.map((slot) => {
-            const globalIdx = slots.indexOf(slot);
-            return (
-              <div key={`specific-${slot.id || globalIdx}`} className="flex items-center justify-between bg-white p-3 border rounded-md shadow-sm">
-                <div className="flex items-center space-x-3">
-                  <input type="date" value={slot.slotDate || ''} onChange={(e) => updateSlotLocal(globalIdx, { slotDate: e.target.value })} className="border-gray-300 rounded-md text-sm p-1 border" />
-                  <input type="time" value={slot.startTime} onChange={(e) => updateSlotLocal(globalIdx, { startTime: e.target.value })} className="border-gray-300 rounded-md text-sm p-1 border" />
-                  <span>-</span>
-                  <input type="time" value={slot.endTime} onChange={(e) => updateSlotLocal(globalIdx, { endTime: e.target.value })} className="border-gray-300 rounded-md text-sm p-1 border" />
-                </div>
-                <button onClick={() => removeSlot(slot)} className="text-red-500 hover:text-red-700">删除</button>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      <div className="pt-4 border-t">
-        <button onClick={saveSettings} disabled={saving} className="w-full inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50">
-          {saving ? '保存中...' : t('interview.save')}
-        </button>
       </div>
     </div>
   );

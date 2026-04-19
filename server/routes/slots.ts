@@ -23,7 +23,11 @@ router.get('/', async (req, res) => {
       let formattedSlotDate = null;
       if (row.slotDate) {
         if (row.slotDate instanceof Date) {
-          formattedSlotDate = row.slotDate.toISOString().split('T')[0];
+          // 使用本地时间而不是UTC时间
+          const year = row.slotDate.getFullYear();
+          const month = String(row.slotDate.getMonth() + 1).padStart(2, '0');
+          const day = String(row.slotDate.getDate()).padStart(2, '0');
+          formattedSlotDate = `${year}-${month}-${day}`;
         } else if (typeof row.slotDate === 'string') {
           formattedSlotDate = row.slotDate.split('T')[0];
         }
@@ -106,25 +110,35 @@ router.delete('/:id', async (req, res) => {
 
 router.get('/available', async (req, res) => {
   try {
-    const { adminUserId } = req.query;
+    const { adminUserId, date } = req.query;
     if (!adminUserId) {
       return res.status(400).json({ success: false, error: '缺少 adminUserId 参数' });
     }
 
-    const now = new Date();
-    const endDate = new Date();
-    endDate.setDate(now.getDate() + 7);
+    // 如果传入了日期参数，使用该日期所在的周，否则使用今天
+    const baseDate = date ? new Date(date as string) : new Date();
+    const dayOfWeek = baseDate.getDay();
+    const weekStart = new Date(baseDate);
+    weekStart.setDate(baseDate.getDate() - dayOfWeek);
+    weekStart.setHours(0, 0, 0, 0);
 
     const [slots] = await pool.execute(
       `SELECT * FROM admin_slots WHERE admin_user_id = ? AND is_active = 1`,
       [adminUserId]
     ) as any[];
 
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekStart.getDate() + 6);
+    weekEnd.setHours(23, 59, 59, 999);
+    
+    const weekStartStr = weekStart.toISOString().split('T')[0];
+    const weekEndStr = weekEnd.toISOString().split('T')[0];
+
     const [bookedSlots] = await pool.execute(
       `SELECT DATE_FORMAT(booking_date, '%Y-%m-%d') as booking_date, start_time, end_time, regular_user_name FROM bookings
        WHERE admin_user_id = ? AND status = 'confirmed'
-         AND booking_date >= CURDATE() AND booking_date <= DATE_ADD(CURDATE(), INTERVAL 7 DAY)`,
-      [adminUserId]
+         AND booking_date >= ? AND booking_date <= ?`,
+      [adminUserId, weekStartStr, weekEndStr]
     ) as any[];
 
     // 标准化时间格式，去掉秒的部分
@@ -137,36 +151,23 @@ router.get('/available', async (req, res) => {
       return time;
     };
     
-    // 标准化日期格式为YYYY-MM-DD
+    // 标准化日期格式为YYYY-MM-DD（使用本地时间）
     const formatDate = (date: any) => {
       if (!date) return date;
       if (typeof date === 'string') {
         return date.split('T')[0];
       }
+      if (date instanceof Date) {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+      }
       return date;
     };
     
-    // 调试日志：查看bookedSlots的原始数据
-    console.log('=== bookedSlots 原始数据 ===');
-    bookedSlots.forEach((b: any) => {
-      const dateObj = b.booking_date;
-      console.log(`dateObj: ${dateObj}, typeof: ${typeof dateObj}`);
-      if (dateObj instanceof Date) {
-        console.log(`  Date methods - getFullYear(): ${dateObj.getFullYear()}, getMonth(): ${dateObj.getMonth()}, getDate(): ${dateObj.getDate()}`);
-        console.log(`  UTC methods - getUTCFullYear(): ${dateObj.getUTCFullYear()}, getUTCMonth(): ${dateObj.getUTCMonth()}, getUTCDate(): ${dateObj.getUTCDate()}`);
-        console.log(`  toISOString(): ${dateObj.toISOString()}`);
-        console.log(`  toLocaleDateString(): ${dateObj.toLocaleDateString()}`);
-      }
-      const formattedDate = formatDate(b.booking_date);
-      const formattedTime = formatTime(b.start_time);
-      console.log(`booking_date: ${b.booking_date}, formattedDate: ${formattedDate}, start_time: ${b.start_time}, formattedTime: ${formattedTime}, key: ${formattedDate}_${formattedTime}`);
-    });
-    
     const bookedSet = new Set(bookedSlots.map((b: any) => `${formatDate(b.booking_date)}_${formatTime(b.start_time)}`));
     const bookedInfoMap = new Map(bookedSlots.map((b: any) => [`${formatDate(b.booking_date)}_${formatTime(b.start_time)}`, b.regular_user_name]));
-    
-    console.log('=== bookedSet 内容 ===');
-    console.log(Array.from(bookedSet));
 
     const available: any[] = [];
     const addedKeys = new Set<string>(); // 用于去重
@@ -176,9 +177,14 @@ router.get('/available', async (req, res) => {
     const regularSlots = slots.filter((s: any) => s.slot_type === 'regular');
     
     for (let i = 0; i < 7; i++) {
-      const date = new Date();
-      date.setDate(now.getDate() + i);
-      const dateStr = date.toISOString().split('T')[0];
+      const date = new Date(weekStart);
+      date.setDate(weekStart.getDate() + i);
+      // 使用本地时间而不是UTC时间
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const dayNum = String(date.getDate()).padStart(2, '0');
+      const dateStr = `${year}-${month}-${dayNum}`;
+      
       const day = date.getDay();
 
       // 先处理特定时段
@@ -186,7 +192,11 @@ router.get('/available', async (req, res) => {
         if (slot.slot_date) {
           let slotDateStr = null;
           if (slot.slot_date instanceof Date) {
-            slotDateStr = slot.slot_date.toISOString().split('T')[0];
+            // 使用本地时间而不是UTC时间
+            const year = slot.slot_date.getFullYear();
+            const month = String(slot.slot_date.getMonth() + 1).padStart(2, '0');
+            const day = String(slot.slot_date.getDate()).padStart(2, '0');
+            slotDateStr = `${year}-${month}-${day}`;
           } else if (typeof slot.slot_date === 'string') {
             slotDateStr = slot.slot_date.split('T')[0];
           }
@@ -216,7 +226,6 @@ router.get('/available', async (req, res) => {
         if (slot.day_of_week === day) {
           const formattedStartTime = formatTime(slot.start_time);
           const key = `${dateStr}_${formattedStartTime}`;
-          console.log(`处理常规时段: date=${dateStr}, slot.start_time=${slot.start_time}, formattedStartTime=${formattedStartTime}, key=${key}, isBooked=${bookedSet.has(key)}`);
           if (!addedKeys.has(key)) {
             addedKeys.add(key);
             const isBooked = bookedSet.has(key);

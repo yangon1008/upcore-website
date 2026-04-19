@@ -206,8 +206,13 @@ export async function deleteSlot(id: number): Promise<void> {
   if (!data.success) throw new Error(data.error || '删除时段失败');
 }
 
-export async function getAvailableSlots(adminUserId: string): Promise<AvailableSlotData[]> {
-  const res = await fetch(`${SLOTS_BASE}/available?adminUserId=${encodeURIComponent(adminUserId)}`);
+export async function getAvailableSlots(adminUserId: string, date?: Date): Promise<AvailableSlotData[]> {
+  let url = `${SLOTS_BASE}/available?adminUserId=${encodeURIComponent(adminUserId)}`;
+  if (date) {
+    const dateStr = date.toISOString().split('T')[0];
+    url += `&date=${encodeURIComponent(dateStr)}`;
+  }
+  const res = await fetch(url);
   const data = await res.json();
   if (!data.success) throw new Error(data.error || '获取可用时段失败');
   return data.data;

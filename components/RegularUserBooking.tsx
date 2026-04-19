@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { RegularUser } from '../utils/feishu';
 import { verifyCode, getAvailableSlots, createBooking, cancelBooking, getUserBooking, getJobPositions, updateInvitationCodeInfo, getInvitationCodeUserInfo, AvailableSlotData, CreateBookingResult, VerifyResult, UserBookingData, JobPositionData } from '../utils/database';
 import UserInfoForm from './UserInfoForm';
+import BookingCalendar from './BookingCalendar';
 
 interface RegularUserBookingProps {
   user: RegularUser;
@@ -18,9 +19,9 @@ const RegularUserBooking: React.FC<RegularUserBookingProps> = ({ user, onRefresh
   const [bookingStatus, setBookingStatus] = useState<'idle' | 'booking' | 'success' | 'error'>('idle');
   const [bookingResult, setBookingResult] = useState<CreateBookingResult | null>(null);
   const [error, setError] = useState('');
-  const [selectedDate, setSelectedDate] = useState<string>('');
   const [refreshing, setRefreshing] = useState(false);
   const [currentStep, setCurrentStep] = useState<'info' | 'booking' | 'success'>('info');
+  const [calendarDate, setCalendarDate] = useState<Date>(new Date());
   const [userInfo, setUserInfo] = useState<{
     gender: string;
     age: string;
@@ -120,6 +121,13 @@ const RegularUserBooking: React.FC<RegularUserBookingProps> = ({ user, onRefresh
     }
   }, [onRefresh]);
 
+  // 当 calendarDate 变化时重新加载 slots
+  useEffect(() => {
+    if (adminInfo && invitationCodeInfo && currentStep === 'booking') {
+      loadSlots(adminInfo.adminUserId, invitationCodeInfo.expiresAt, calendarDate);
+    }
+  }, [calendarDate]);
+
   const handleUserInfoSubmit = async (data: {
     gender: string;
     age: string;
@@ -151,18 +159,7 @@ const RegularUserBooking: React.FC<RegularUserBookingProps> = ({ user, onRefresh
       
       // 加载可用的面试场次
       if (adminInfo && invitationCodeInfo) {
-        const slots = await getAvailableSlots(adminInfo.adminUserId);
-        // 过滤出邀请码有效期内的场次
-        const validSlots = slots.filter(slot => {
-          const slotDate = new Date(slot.date);
-          const expiresAt = new Date(invitationCodeInfo.expiresAt);
-          return slotDate <= expiresAt;
-        });
-        setAvailableSlots(validSlots);
-        if (validSlots.length > 0) {
-          const firstDate = [...new Set(validSlots.map(s => s.date))].sort()[0];
-          setSelectedDate(firstDate);
-        }
+        await loadSlots(adminInfo.adminUserId, invitationCodeInfo.expiresAt, calendarDate);
       }
       setCurrentStep('booking');
     } catch (err: any) {
@@ -172,6 +169,18 @@ const RegularUserBooking: React.FC<RegularUserBookingProps> = ({ user, onRefresh
     } finally {
       setLoading(false);
     }
+  };
+
+  // 加载可用时段
+  const loadSlots = async (adminUserId: string, expiresAt: string, date?: Date) => {
+    const slots = await getAvailableSlots(adminUserId, date);
+    // 过滤出邀请码有效期内的场次
+    const validSlots = slots.filter(slot => {
+      const slotDate = new Date(slot.date);
+      const expires = new Date(expiresAt);
+      return slotDate <= expires;
+    });
+    setAvailableSlots(validSlots);
   };
 
   const handleBook = async () => {
@@ -222,15 +231,6 @@ const RegularUserBooking: React.FC<RegularUserBookingProps> = ({ user, onRefresh
   };
 
   const maskName = (name: string) => name ? name.charAt(0) + '*' : '';
-
-  const uniqueDates: string[] = [...new Set<string>(availableSlots.map(slot => slot.date))].sort();
-  const slotsByDate: Record<string, AvailableSlotData[]> = availableSlots.reduce((acc, slot) => {
-    if (!acc[slot.date]) acc[slot.date] = [];
-    acc[slot.date].push(slot);
-    return acc;
-  }, {} as Record<string, AvailableSlotData[]>);
-
-  const currentSlots = selectedDate ? (slotsByDate[selectedDate] || []) : [];
 
   if (loading) {
     return (
@@ -350,121 +350,43 @@ const RegularUserBooking: React.FC<RegularUserBookingProps> = ({ user, onRefresh
         </div>
       </div>
 
-      <div className="space-y-4">
-        <h3 className="font-medium text-gray-900 flex items-center">
-          <svg className="w-5 h-5 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-          </svg>
-          选择预约日期
-        </h3>
+      <BookingCalendar
+        slots={availableSlots}
+        selectedSlotId={selectedSlot?.id || null}
+        onSlotSelect={(slot) => setSelectedSlot(slot)}
+        currentDate={calendarDate}
+        onCurrentDateChange={(date) => setCalendarDate(date)}
+      />
 
-        {uniqueDates.length > 0 ? (
-          <>
-            <div className="overflow-x-auto pb-2">
-              <div className="flex space-x-2 min-w-max">
-                {uniqueDates.map((date) => {
-                  const firstSlot = slotsByDate[date][0];
-                  const totalSlots = slotsByDate[date].length;
-                  const availableCount = slotsByDate[date].filter(s => !s.isBooked).length;
-                  return (
-                    <button
-                      key={date}
-                      onClick={() => {
-                        setSelectedDate(date);
-                        setSelectedSlot(null);
-                      }}
-                      className={`px-2 py-1.5 rounded-lg border-2 transition-all flex-shrink-0 ${
-                        selectedDate === date
-                          ? 'border-blue-500 bg-blue-50 shadow-sm'
-                          : 'border-gray-200 hover:border-blue-300 hover:bg-gray-50'
-                      }`}
-                    >
-                      <div className="font-medium text-sm text-gray-900">{firstSlot.displayDate}</div>
-                      <div className="text-xs text-gray-500 mt-0.5">
-                        {availableCount} 场可约
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {selectedDate && currentSlots.length > 0 && (
-              <div className="space-y-3">
-                <h4 className="text-sm font-medium text-gray-600">可预约场次</h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {currentSlots.map((slot) => {
-                    const isSelected = selectedSlot?.date === slot.date && selectedSlot?.startTime === slot.startTime;
-                    const isBooked = slot.isBooked;
-                    return (
-                      <button
-                        key={`${slot.date}_${slot.startTime}`}
-                        onClick={() => {
-                          if (isBooked) return;
-                          setSelectedSlot(isSelected ? null : slot);
-                        }}
-                        disabled={isBooked}
-                        className={`flex flex-col items-center justify-center px-4 py-2 rounded-xl border-2 transition-all h-[54px] ${
-                          isBooked
-                            ? 'border-gray-300 bg-gray-100 cursor-not-allowed opacity-75'
-                            : isSelected
-                              ? 'border-blue-500 bg-blue-50 shadow-sm'
-                              : 'border-gray-200 hover:border-blue-300 hover:bg-gray-50'
-                        }`}
-                      >
-                        <div className={`text-lg font-semibold text-center ${isBooked ? 'text-gray-500' : 'text-gray-900'}`}>
-                          {slot.startTime} - {slot.endTime}
-                        </div>
-                        {isBooked && (
-                          <div className="text-sm text-gray-400">已被预约</div>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-          </>
-        ) : (
-          <div className="text-center py-8 bg-gray-50 rounded-xl">
-            <svg className="w-12 h-12 mx-auto text-gray-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
-            <p className="text-gray-400">暂无可预约的时段</p>
-            <p className="text-gray-400 text-sm mt-1">请联系管理员添加可用时间段</p>
-          </div>
-        )}
-
-        {error && bookingStatus === 'error' && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-            <p className="text-red-600 text-sm">{error}</p>
-          </div>
-        )}
-
-        <div className="flex space-x-4 mt-6">
-          <button
-            onClick={() => setCurrentStep('info')}
-            className="flex-1 px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-medium"
-          >
-            上一步
-          </button>
-          {selectedSlot && selectedDate && currentSlots.length > 0 && (
-            <button
-              onClick={handleBook}
-              disabled={bookingStatus === 'booking'}
-              className="flex-1 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:opacity-50"
-            >
-              {bookingStatus === 'booking' ? (
-                <span className="flex items-center justify-center">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  预约中...
-                </span>
-              ) : (
-                `确认预约`
-              )}
-            </button>
-          )}
+      {error && bookingStatus === 'error' && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 mt-4">
+          <p className="text-red-600 text-sm">{error}</p>
         </div>
+      )}
+
+      <div className="flex space-x-4 mt-6">
+        <button
+          onClick={() => setCurrentStep('info')}
+          className="flex-1 px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+        >
+          上一步
+        </button>
+        {selectedSlot && (
+          <button
+            onClick={handleBook}
+            disabled={bookingStatus === 'booking'}
+            className="flex-1 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:opacity-50"
+          >
+            {bookingStatus === 'booking' ? (
+              <span className="flex items-center justify-center">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                预约中...
+              </span>
+            ) : (
+              '确认预约'
+            )}
+          </button>
+        )}
       </div>
     </div>
   );
@@ -520,7 +442,7 @@ const RegularUserBooking: React.FC<RegularUserBookingProps> = ({ user, onRefresh
   );
 
   return (
-    <div className="max-w-lg mx-auto w-4/5 space-y-6 py-8">
+    <div className="max-w-3xl mx-auto space-y-6 py-8">
       {renderStepNavigation()}
       {renderInfoStep()}
       {renderBookingStep()}

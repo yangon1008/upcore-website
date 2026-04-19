@@ -238,7 +238,7 @@ const UserInfoForm: React.FC<UserInfoFormProps> = ({
   };
 
   return (
-    <div className="max-w-lg mx-auto space-y-6">
+    <div className="w-full space-y-6">
       <h2 className="text-2xl font-bold text-gray-900 mb-6">填写个人信息</h2>
       
       <form onSubmit={handleSubmit} className="space-y-6">
