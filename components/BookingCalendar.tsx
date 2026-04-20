@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { AvailableSlotData } from '../utils/database';
 
 interface BookingCalendarSlot {
@@ -28,6 +28,8 @@ const ROW_HEIGHT = 60;
 
 const BookingCalendar: React.FC<BookingCalendarProps> = ({ slots, selectedSlotId, onSlotSelect, currentDate, onCurrentDateChange }) => {
   const [internalDate, setInternalDate] = useState<Date>(currentDate);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const hasScrolledRef = useRef(false);
 
   // 当外部传入的 currentDate 变化时，更新内部状态
   React.useEffect(() => {
@@ -124,6 +126,27 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({ slots, selectedSlotId
     return `${start.getFullYear()}年${startMonth}月${start.getDate()}日 - ${end.getFullYear()}年${endMonth}月${end.getDate()}日`;
   }, [weekDates]);
 
+  // 自动滚动到第一个面试时段
+  useEffect(() => {
+    if (calendarSlots.length > 0 && scrollContainerRef.current && !hasScrolledRef.current) {
+      hasScrolledRef.current = true;
+      
+      // 找到第一个未预约的时段，如果没有则使用第一个时段
+      const firstAvailableSlot = calendarSlots.find(slot => !slot.isBooked) || calendarSlots[0];
+      
+      // 计算滚动位置，让时段居中显示
+      const scrollPosition = Math.max(0, firstAvailableSlot.top - 100);
+      
+      // 延迟一点时间确保DOM已渲染
+      setTimeout(() => {
+        scrollContainerRef.current?.scrollTo({
+          top: scrollPosition,
+          behavior: 'smooth'
+        });
+      }, 100);
+    }
+  }, [calendarSlots]);
+
   return (
     <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden w-full" style={{ minHeight: '600px' }}>
       {/* 顶部导航栏 */}
@@ -203,7 +226,7 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({ slots, selectedSlotId
         </div>
 
         {/* 滚动区域 */}
-        <div className="flex-1 overflow-auto" style={{ scrollbarWidth: 'thin' }}>
+        <div ref={scrollContainerRef} className="flex-1 overflow-auto" style={{ scrollbarWidth: 'thin' }}>
           <div className="flex">
             {/* 左侧时间轴 */}
             <div className="flex-shrink-0 w-16 bg-gray-50">
@@ -237,10 +260,7 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({ slots, selectedSlotId
               {calendarSlots.map((calSlot) => {
                 const isSelected = calSlot.id === selectedSlotId;
                 const dayWidthPercent = 100 / 7;
-                // 如果已预约且有面试者名字，增加高度来显示两行内容
-                const slotHeight = calSlot.isBooked && calSlot.bookedByName 
-                  ? Math.max(calSlot.height, 44) 
-                  : Math.max(calSlot.height, 24);
+                const slotHeight = Math.max(calSlot.height, 24);
 
                 return (
                   <div
@@ -264,18 +284,13 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({ slots, selectedSlotId
                     onClick={() => !calSlot.isBooked && onSlotSelect?.(calSlot.originalSlot)}
                     title={
                       calSlot.isBooked
-                        ? `已预约: ${calSlot.bookedByName || ''}`
+                        ? '已预约'
                         : `可预约时段: ${calSlot.originalSlot.startTime.slice(0, 5)}-${calSlot.originalSlot.endTime.slice(0, 5)}`
                     }
                   >
                     <div className="truncate">
                       <span>{calSlot.originalSlot.startTime.slice(0, 5)}-{calSlot.originalSlot.endTime.slice(0, 5)}</span>
                     </div>
-                    {calSlot.isBooked && calSlot.bookedByName && (
-                      <div className="truncate text-xs opacity-70 mt-0.5">
-                        {calSlot.bookedByName}
-                      </div>
-                    )}
                   </div>
                 );
               })}

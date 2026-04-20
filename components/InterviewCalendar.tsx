@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { SlotData, saveSlot, updateSlot, deleteSlot } from '../utils/database';
+import { SlotData, saveSlot, updateSlot, deleteSlot, BookingData } from '../utils/database';
 
 interface CalendarSlot {
   id: number | string;
@@ -11,18 +11,36 @@ interface CalendarSlot {
   top: number;
   height: number;
   originalSlot: SlotData;
+  isBooked?: boolean;
+  bookedByName?: string;
 }
 
 interface InterviewCalendarProps {
   slots?: SlotData[];
   onSlotChange?: (slots: SlotData[]) => void;
   adminUserId?: string;
+  bookings?: BookingData[];
+  currentDate?: Date;
+  onCurrentDateChange?: (date: Date) => void;
 }
 
 type ViewType = 'day' | 'week' | 'month';
 
-const InterviewCalendar: React.FC<InterviewCalendarProps> = ({ slots = [], onSlotChange, adminUserId }) => {
-  const [currentDate, setCurrentDate] = useState<Date>(new Date());
+const InterviewCalendar: React.FC<InterviewCalendarProps> = ({ 
+  slots = [], 
+  onSlotChange, 
+  adminUserId, 
+  bookings = [], 
+  currentDate: propCurrentDate, 
+  onCurrentDateChange 
+}) => {
+  const [internalCurrentDate, setInternalCurrentDate] = useState<Date>(new Date());
+  const currentDate = propCurrentDate || internalCurrentDate;
+  
+  const setCurrentDate = (date: Date) => {
+    setInternalCurrentDate(date);
+    onCurrentDateChange?.(date);
+  };
   const [viewType, setViewType] = useState<ViewType>('week');
 
   // 对话框状态管理
@@ -131,8 +149,34 @@ const InterviewCalendar: React.FC<InterviewCalendarProps> = ({ slots = [], onSlo
     return `${format(start)} - ${format(end)}`;
   }, [weekDates]);
 
+  // 标准化时间格式的辅助函数
+  const normalizeTime = (timeStr: string) => {
+    // 确保时间格式为 HH:MM
+    if (!timeStr) return '';
+    const parts = timeStr.split(':');
+    const hour = String(parseInt(parts[0] || '0')).padStart(2, '0');
+    const minute = String(parseInt(parts[1] || '0')).padStart(2, '0');
+    return `${hour}:${minute}`;
+  };
+
+  // 标准化日期格式的辅助函数
+  const normalizeDate = (dateStr: string) => {
+    // 确保日期格式为 YYYY-MM-DD
+    if (!dateStr) return '';
+    // 处理可能的不同格式
+    if (dateStr.includes('T')) {
+      dateStr = dateStr.split('T')[0];
+    }
+    return dateStr;
+  };
+
   const calendarSlots = useMemo<CalendarSlot[]>(() => {
+    console.log('========== InterviewCalendar 生成日历时段 ==========');
+    console.log('当前 bookings 数据:', bookings);
+    console.log('当前 displaySlots 数据:', displaySlots);
+    
     const results: CalendarSlot[] = [];
+    let bookedCount = 0;
 
     displaySlots.forEach((slot) => {
       if (slot.slotType === 'specific' && slot.slotDate) {
@@ -160,6 +204,34 @@ const InterviewCalendar: React.FC<InterviewCalendarProps> = ({ slots = [], onSlo
           const top = (startHour + startMinute / 60) * ROW_HEIGHT;
           const height = (durationMinutes / 60) * ROW_HEIGHT;
 
+          // 检查是否已预约
+          const formatDate = (date: Date) => {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+          };
+          const slotDateStr = formatDate(slotDate);
+          const slotTimeNorm = normalizeTime(slot.startTime);
+          
+          console.log(`检查特定时段: ${slotDateStr} ${slot.startTime} (标准化: ${slotTimeNorm})`);
+          console.log(`可用的预约数据:`, bookings.map(b => ({ 
+            date: b.bookingDate, 
+            time: b.startTime,
+            dateNorm: normalizeDate(b.bookingDate),
+            timeNorm: normalizeTime(b.startTime),
+            name: b.regularUserName 
+          })));
+          
+          const booking = bookings.find(
+            b => normalizeDate(b.bookingDate) === slotDateStr && normalizeTime(b.startTime) === slotTimeNorm
+          );
+          
+          if (booking) {
+            bookedCount++;
+            console.log(`✅ 找到匹配预约:`, booking);
+          }
+
           results.push({
             id: slot.id ?? `specific-${slot.slotDate}-${slot.startTime}`,
             slotType: 'specific',
@@ -170,6 +242,8 @@ const InterviewCalendar: React.FC<InterviewCalendarProps> = ({ slots = [], onSlo
             top,
             height,
             originalSlot: slot,
+            isBooked: !!booking,
+            bookedByName: booking?.regularUserName,
           });
         }
       } else if (slot.slotType === 'regular' && slot.dayOfWeek !== undefined) {
@@ -188,6 +262,27 @@ const InterviewCalendar: React.FC<InterviewCalendarProps> = ({ slots = [], onSlo
         const top = (startHour + startMinute / 60) * ROW_HEIGHT;
         const height = (durationMinutes / 60) * ROW_HEIGHT;
 
+        // 检查是否已预约
+        const formatDate = (date: Date) => {
+          const year = date.getFullYear();
+          const month = String(date.getMonth() + 1).padStart(2, '0');
+          const day = String(date.getDate()).padStart(2, '0');
+          return `${year}-${month}-${day}`;
+        };
+        const slotDateStr = formatDate(targetDate);
+        const slotTimeNorm = normalizeTime(slot.startTime);
+        
+        console.log(`检查常驻时段: ${slotDateStr} ${slot.startTime} (标准化: ${slotTimeNorm}, 星期${dayIndex})`);
+        
+        const booking = bookings.find(
+          b => normalizeDate(b.bookingDate) === slotDateStr && normalizeTime(b.startTime) === slotTimeNorm
+        );
+        
+        if (booking) {
+          bookedCount++;
+          console.log(`✅ 找到匹配预约:`, booking);
+        }
+
         results.push({
           id: slot.id ?? `regular-${dayIndex}-${slot.startTime}`,
           slotType: 'regular',
@@ -198,12 +293,17 @@ const InterviewCalendar: React.FC<InterviewCalendarProps> = ({ slots = [], onSlo
           top,
           height,
           originalSlot: slot,
+          isBooked: !!booking,
+          bookedByName: booking?.regularUserName,
         });
       }
     });
+    
+    console.log(`总共找到 ${bookedCount} 个已预约时段`);
+    console.log('生成的日历时段结果:', results);
 
     return results;
-  }, [displaySlots, weekDates, ROW_HEIGHT]);
+  }, [displaySlots, weekDates, ROW_HEIGHT, bookings]);
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -380,6 +480,12 @@ const InterviewCalendar: React.FC<InterviewCalendarProps> = ({ slots = [], onSlo
   // 点击时段块显示编辑对话框
   const handleSlotClick = (calendarSlot: CalendarSlot, event: React.MouseEvent) => {
     event.stopPropagation();
+
+    // 已预约的时段不可编辑
+    if (calendarSlot.isBooked) {
+      alert(`该时段已被 ${calendarSlot.bookedByName} 预约，无法编辑`);
+      return;
+    }
 
     setEditingSlot(calendarSlot.originalSlot);
     setDialogMode('edit');
@@ -615,31 +721,45 @@ const InterviewCalendar: React.FC<InterviewCalendarProps> = ({ slots = [], onSlo
               {calendarSlots.map((calSlot) => {
                 const isSpecific = calSlot.slotType === 'specific';
                 const dayWidthPercent = 100 / 7;
+                const isBooked = calSlot.isBooked;
 
                 return (
                   <div
                     key={calSlot.id}
-                    className={`absolute z-10 rounded px-2 py-1 text-xs font-medium cursor-pointer transition-all hover:shadow-md hover:scale-[1.02] ${
-                      isSpecific
-                        ? 'bg-blue-50/80 hover:bg-blue-100/90 border-l-[3px] border-blue-500 text-blue-700'
-                        : 'bg-green-50/80 hover:bg-green-100/90 border-l-[3px] border-green-500 text-green-700'
+                    className={`absolute z-10 rounded px-2 py-1 text-xs font-medium transition-all overflow-hidden ${
+                      isBooked
+                        ? 'bg-gray-100 border-l-[3px] border-gray-400 text-gray-500 cursor-not-allowed opacity-70'
+                        : isSpecific
+                          ? 'bg-blue-50/80 border-l-[3px] border-blue-500 text-blue-700 cursor-pointer hover:bg-blue-100 hover:shadow-md hover:scale-[1.02]'
+                          : 'bg-green-50/80 border-l-[3px] border-green-500 text-green-700 cursor-pointer hover:bg-green-100 hover:shadow-md hover:scale-[1.02]'
                     }`}
                     style={{
                       left: `${calSlot.dayIndex * dayWidthPercent}%`,
                       width: `${dayWidthPercent}%`,
                       top: `${calSlot.top}px`,
-                      height: `${Math.max(calSlot.height, 24)}px`,
+                      height: `${Math.max(calSlot.height, isBooked && calSlot.bookedByName ? 44 : 24)}px`,
                       transform: 'translateZ(0)',
                     }}
-                    title={`${isSpecific ? '特定日期' : '常驻'}时段: ${calSlot.originalSlot.startTime.slice(0, 5)}-${calSlot.originalSlot.endTime.slice(0, 5)}`}
-                    onClick={(e) => handleSlotClick(calSlot, e)}
+                    title={
+                      isBooked
+                        ? `已预约: ${calSlot.bookedByName || ''}`
+                        : `${isSpecific ? '特定日期' : '常驻'}时段: ${calSlot.originalSlot.startTime.slice(0, 5)}-${calSlot.originalSlot.endTime.slice(0, 5)}`
+                    }
+                    onClick={(e) => !isBooked && handleSlotClick(calSlot, e)}
                   >
-                    <div className="truncate flex items-center justify-between">
-                      <span>{calSlot.originalSlot.startTime.slice(0, 5)}-{calSlot.originalSlot.endTime.slice(0, 5)}</span>
-                      <svg className="w-3 h-3 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                      </svg>
+                    <div className="flex items-start justify-between w-full">
+                      <span className="truncate">{calSlot.originalSlot.startTime.slice(0, 5)}-{calSlot.originalSlot.endTime.slice(0, 5)}</span>
+                      {!isBooked && (
+                        <svg className="w-3 h-3 opacity-60 flex-shrink-0 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                        </svg>
+                      )}
                     </div>
+                    {isBooked && calSlot.bookedByName && (
+                      <div className="truncate text-xs opacity-70 mt-0.5">
+                        {calSlot.bookedByName}
+                      </div>
+                    )}
                   </div>
                 );
               })}

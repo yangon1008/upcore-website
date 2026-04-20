@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { feishuService, FeishuUser } from '../utils/feishu';
-import { generateCode, getCodes, getAdminSlots, getJobPositions, createJobPosition, updateJobPosition, deleteJobPosition, InvitationCodeData, SlotData, JobPositionData } from '../utils/database';
+import { generateCode, getCodes, getAdminSlots, getJobPositions, createJobPosition, updateJobPosition, deleteJobPosition, getBookings, InvitationCodeData, SlotData, JobPositionData, BookingData } from '../utils/database';
 import InterviewCalendar from './InterviewCalendar';
 
 interface AdminPanelProps {
@@ -12,6 +12,7 @@ interface AdminPanelProps {
 const AdminPanel: React.FC<AdminPanelProps> = ({ user, onRefresh }) => {
   const { t } = useLanguage();
   const [slots, setSlots] = useState<SlotData[]>([]);
+  const [bookings, setBookings] = useState<BookingData[]>([]);
   const [invitationCodes, setInvitationCodes] = useState<InvitationCodeData[]>([]);
   const [jobPositions, setJobPositions] = useState<JobPositionData[]>([]);
   const [showAllCodes, setShowAllCodes] = useState(false);
@@ -20,6 +21,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ user, onRefresh }) => {
   const [refreshing, setRefreshing] = useState(false);
   const [newPositionName, setNewPositionName] = useState('');
   const [newPositionDescription, setNewPositionDescription] = useState('');
+  const [calendarCurrentDate, setCalendarCurrentDate] = useState<Date>(new Date());
 
   const loadData = async () => {
     setRefreshing(true);
@@ -40,6 +42,45 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ user, onRefresh }) => {
       setRefreshing(false);
     }
   };
+
+  const loadBookings = async (startDate: Date, endDate: Date) => {
+    try {
+      console.log('========== AdminPanel 加载预约数据 ==========');
+      console.log('查询日期范围:', { 
+        start: startDate.toLocaleDateString('zh-CN'), 
+        end: endDate.toLocaleDateString('zh-CN') 
+      });
+      
+      const bookingsData = await getBookings(user.user_id, startDate, endDate);
+      console.log('获取到的预约数据:', bookingsData);
+      
+      setBookings(bookingsData);
+    } catch (err) {
+      console.error('加载预约数据失败:', err);
+    }
+  };
+
+  // 计算当前显示的周的起止日期
+  const weekDates = useMemo(() => {
+    const date = new Date(calendarCurrentDate);
+    const dayOfWeek = date.getDay();
+    const sunday = new Date(date);
+    sunday.setDate(date.getDate() - dayOfWeek);
+    return Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(sunday);
+      d.setDate(sunday.getDate() + i);
+      return d;
+    });
+  }, [calendarCurrentDate]);
+
+  // 当初始加载或周切换时，加载对应周的预约数据
+  useEffect(() => {
+    if (weekDates.length > 0) {
+      const startDate = weekDates[0];
+      const endDate = weekDates[6];
+      loadBookings(startDate, endDate);
+    }
+  }, [weekDates, user.user_id]);
 
   useEffect(() => {
     loadData();
@@ -207,17 +248,24 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ user, onRefresh }) => {
               </div>
               <div className="flex items-center space-x-1.5">
                 <div className="w-4 h-4 rounded border-l-[3px] border-green-500 bg-green-50/80"></div>
-                <span className="text-gray-600">固定时段</span>
+                <span className="text-gray-600">常驻时段</span>
+              </div>
+              <div className="flex items-center space-x-1.5">
+                <div className="w-4 h-4 rounded border-l-[3px] border-gray-400 bg-gray-100 opacity-70"></div>
+                <span className="text-gray-600">已预约</span>
               </div>
             </div>
           </div>
-          <p className="text-sm text-gray-500 mt-1">点击日历空白处添加面试时间段，点击已有时段可编辑或删除</p>
+          <p className="text-sm text-gray-500 mt-1">点击日历空白处添加面试时间段，点击已有时段可编辑或删除（已预约时段不可编辑）</p>
         </div>
 
         <InterviewCalendar
           slots={slots}
           onSlotChange={(newSlots) => setSlots(newSlots)}
           adminUserId={user.user_id}
+          bookings={bookings}
+          currentDate={calendarCurrentDate}
+          onCurrentDateChange={(date) => setCalendarCurrentDate(date)}
         />
       </div>
 

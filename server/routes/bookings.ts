@@ -515,7 +515,10 @@ router.post('/', async (req, res) => {
 
 router.get('/', async (req, res) => {
   try {
-    const { adminUserId, regularUserId } = req.query;
+    const { adminUserId, regularUserId, startDate, endDate } = req.query;
+    console.log('========== 获取预约列表请求 ==========');
+    console.log('查询参数:', { adminUserId, regularUserId, startDate, endDate });
+    
     if (!adminUserId && !regularUserId) {
       return res.status(400).json({ success: false, error: '缺少 adminUserId 或 regularUserId 参数' });
     }
@@ -524,25 +527,34 @@ router.get('/', async (req, res) => {
     let params: any[];
 
     if (adminUserId) {
+      let dateCondition = 'AND b.booking_date >= CURDATE()';
+      if (startDate && endDate) {
+        dateCondition = 'AND b.booking_date >= ? AND b.booking_date <= ?';
+      }
+      
       query = `
         SELECT b.id, b.regular_user_name as regularUserName, DATE_FORMAT(b.booking_date, '%Y-%m-%d') as bookingDate,
-                DATE_FORMAT(b.start_time, '%H:%i') as startTime, DATE_FORMAT(b.end_time, '%H:%i') as endTime,
-                b.feishu_meeting_url as feishuMeetingUrl, b.status, b.created_at as createdAt,
-                i.used_by_gender as gender, i.used_by_age as age, i.used_by_phone as phone,
-                i.used_by_files as files, i.used_by_introduction as introduction,
-                i.job_position_name as jobPositionName
+               DATE_FORMAT(b.start_time, '%H:%i') as startTime, DATE_FORMAT(b.end_time, '%H:%i') as endTime,
+               b.feishu_meeting_url as feishuMeetingUrl, b.status, b.created_at as createdAt,
+               i.used_by_gender as gender, i.used_by_age as age, i.used_by_phone as phone,
+               i.used_by_files as files, i.used_by_introduction as introduction,
+               i.job_position_name as jobPositionName
          FROM bookings b
          LEFT JOIN invitation_codes i ON b.invitation_code = i.code
          WHERE b.admin_user_id = ? AND b.status = 'confirmed'
-         AND b.booking_date >= CURDATE()
+         ${dateCondition}
          ORDER BY b.booking_date ASC, b.start_time ASC
       `;
+      
       params = [adminUserId];
+      if (startDate && endDate) {
+        params.push(startDate, endDate);
+      }
     } else {
       query = `
         SELECT b.id, b.admin_user_name as adminUserName, DATE_FORMAT(b.booking_date, '%Y-%m-%d') as bookingDate,
-                DATE_FORMAT(b.start_time, '%H:%i') as startTime, DATE_FORMAT(b.end_time, '%H:%i') as endTime,
-                b.feishu_meeting_url as feishuMeetingUrl, b.status, b.created_at as createdAt
+               DATE_FORMAT(b.start_time, '%H:%i') as startTime, DATE_FORMAT(b.end_time, '%H:%i') as endTime,
+               b.feishu_meeting_url as feishuMeetingUrl, b.status, b.created_at as createdAt
          FROM bookings b
          WHERE b.regular_user_id = ? AND b.status = 'confirmed'
          ORDER BY b.booking_date DESC, b.start_time DESC
@@ -551,49 +563,38 @@ router.get('/', async (req, res) => {
       params = [regularUserId];
     }
 
-    const [rows] = await pool.execute(query, params);
-    console.log('========== 获取预约列表原始数据 ==========');
-    console.log('原始查询结果:', JSON.stringify(rows, null, 2));
+    console.log('SQL查询:', query);
+    console.log('查询参数:', params);
     
-    // 解析JSON文件数组 - 简化逻辑，先检查是否已经是数组
+    const [rows] = await pool.execute(query, params);
+    console.log('查询到的预约数量:', (rows as any[]).length);
+    console.log('查询结果:', JSON.stringify(rows, null, 2));
+    
+    // 解析JSON文件数组
     const processedRows = (rows as any[]).map(row => {
       const newRow: any = { ...row };
       
-      console.log('处理行数据:', newRow);
-      console.log('files 原始值:', newRow.files);
-      console.log('files 类型:', typeof newRow.files);
-      console.log('files 是否为数组:', Array.isArray(newRow.files));
-      
       if (newRow.files) {
-        if (Array.isArray(newRow.files)) {
-          console.log('files 已经是数组，直接使用');
-        } else if (typeof newRow.files === 'string') {
+        if (typeof newRow.files === 'string') {
           try {
-            console.log('files 是字符串，尝试解析');
             newRow.files = JSON.parse(newRow.files);
             if (!Array.isArray(newRow.files)) {
               newRow.files = [];
             }
           } catch (e) {
-            console.error('解析 files JSON 失败:', e);
             newRow.files = [];
           }
-        } else {
-          console.log('files 类型不支持，设置为空数组');
+        } else if (!Array.isArray(newRow.files)) {
           newRow.files = [];
         }
       } else {
-        console.log('files 为空，设置为空数组');
         newRow.files = [];
       }
       
-      console.log('处理后的 files:', newRow.files);
       return newRow;
     });
     
-    console.log('========== 处理后的数据 ==========');
-    console.log('返回给前端的数据:', JSON.stringify(processedRows, null, 2));
-
+    console.log('返回预约数据:', JSON.stringify(processedRows, null, 2));
     res.json({ success: true, data: processedRows });
   } catch (error: any) {
     console.error('获取预约列表失败:', error.message);

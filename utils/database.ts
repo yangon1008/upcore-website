@@ -243,8 +243,18 @@ export async function createBooking(booking: {
   return data.data;
 }
 
-export async function getBookings(adminUserId: string): Promise<BookingData[]> {
-  const res = await fetch(`${BOOKINGS_BASE}?adminUserId=${encodeURIComponent(adminUserId)}`);
+export async function getBookings(adminUserId: string, startDate?: Date, endDate?: Date): Promise<BookingData[]> {
+  let url = `${BOOKINGS_BASE}?adminUserId=${encodeURIComponent(adminUserId)}`;
+  if (startDate && endDate) {
+    const formatDate = (date: Date) => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+    url += `&startDate=${encodeURIComponent(formatDate(startDate))}&endDate=${encodeURIComponent(formatDate(endDate))}`;
+  }
+  const res = await fetch(url);
   const data = await res.json();
   if (!data.success) throw new Error(data.error || '获取预约列表失败');
   return data.data;

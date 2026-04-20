@@ -19,6 +19,16 @@ router.get('/', async (req, res) => {
       [adminUserId]
     );
 
+    // 标准化时间格式的辅助函数
+    const normalizeTime = (timeStr: any) => {
+      if (!timeStr) return '';
+      let timeStrVal = typeof timeStr === 'string' ? timeStr : String(timeStr);
+      const parts = timeStrVal.split(':');
+      const hour = String(parseInt(parts[0] || '0')).padStart(2, '0');
+      const minute = String(parseInt(parts[1] || '0')).padStart(2, '0');
+      return `${hour}:${minute}`;
+    };
+
     const formattedRows = (rows as any[]).map(row => {
       let formattedSlotDate = null;
       if (row.slotDate) {
@@ -34,7 +44,9 @@ router.get('/', async (req, res) => {
       }
       return {
         ...row,
-        slotDate: formattedSlotDate
+        slotDate: formattedSlotDate,
+        startTime: normalizeTime(row.startTime),
+        endTime: normalizeTime(row.endTime)
       };
     });
 
