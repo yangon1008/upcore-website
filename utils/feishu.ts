@@ -14,9 +14,7 @@ const APP_ID = (import.meta as unknown as ImportMeta).env.VITE_FEISHU_APP_ID || 
 const APP_SECRET = (import.meta as unknown as ImportMeta).env.VITE_FEISHU_APP_SECRET || '';
 
 
-
-// 动态获取当前域名作为重定向基础，若环境变量中有设置则优先使用
-const REDIRECT_URI = (import.meta as unknown as ImportMeta).env.VITE_FEISHU_REDIRECT_URI || `${window.location.origin}/interview`;
+const REDIRECT_URI = `${window.location.origin}/interview`;
 
 // 使用后端服务器地址访问飞书 API
 const BASE_URL = '/api/feishu'

@@ -101,14 +101,22 @@ upcore-website/
 **使用 scp 命令上传（推荐）**
 
 ```bash
-# 上传整个 dist 目录内容到服务器网站根目录
+# 上传前端文件
 scp -P 13673 -r dist/* root@106.15.204.216:/var/www/website/
+
+# 上传后端文件
+scp -P 13673 -r server root@106.15.204.216:/var/www/website/
+scp -P 13673 package.json root@106.15.204.216:/var/www/website/
+scp -P 13673 package-lock.json root@106.15.204.216:/var/www/website/
+scp -P 13673 .env.server root@106.15.204.216:/var/www/website/.env
 ```
 
-**使用 rsync 命令上传（支持增量同步）**
+**安装依赖**
 
 ```bash
-rsync -avz -e "ssh -p 13673" dist/ root@106.15.204.216:/var/www/website/
+cd /var/www/website
+npm install --production
+npm install -g pm2
 ```
 
 **使用 FTP/SFTP 工具**
