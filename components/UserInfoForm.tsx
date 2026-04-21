@@ -180,7 +180,7 @@ const UserInfoForm: React.FC<UserInfoFormProps> = ({
     }
 
     try {
-      const response = await fetch('http://localhost:3001/api/files/upload', {
+      const response = await fetch('/api/files/upload', {
         method: 'POST',
         body: formData
       });
