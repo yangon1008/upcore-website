@@ -22,8 +22,7 @@ upcore-website/
 │   │   └── logo.png     # Logo
 │   └── vedio/           # 视频资源
 │       ├── about.mp4
-│       ├── brushtooth.mp4
-│       └── home1.mp4
+│       └── brushtooth.mp4
 ├── utils/               # 工具函数
 ├── App.tsx              # 主应用组件
 ├── index.tsx            # 入口文件
@@ -85,8 +84,7 @@ upcore-website/
    │   └── logo.png
    └── vedio/
        ├── about.mp4
-       ├── brushtooth.mp4
-       └── home1.mp4
+       └── brushtooth.mp4
    ```
 3. **本地预览构建结果**
    ```bash
