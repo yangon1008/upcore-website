@@ -158,7 +158,7 @@ const AppleStyleProductDisplay: React.FC<AppleStyleProductDisplayProps> = ({ onN
                       <span className="text-lg">›</span>
                     </button>
                     <button
-                      onClick={() => window.open('https://mall.jd.com/index-1000104683.html?from=pc&spmTag=YTAyMTkuYjAwMjM1Ni5jMDAwMDQ2ODkuMiUyM2hpc2tleXdvcmQlMkNhMDI0MC5iMDAyNDkzLmMwMDAwNDAyNy4xJTIzZW50ZXJfc2hvcA', '_blank')}
+                      onClick={() => alert('敬请期待！')}
                       className="flex items-center gap-2 font-semibold hover:gap-3 transition-all duration-300 text-black"
                     >
                       <span>{t('products.buyNow')}</span>

@@ -41,7 +41,7 @@ const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
   const columns = [
     {
       title: t('footer.sections.products'),
-      links: [t('footer.products.i2'), t('footer.products.se'), t('footer.products.swift'), t('footer.products.lissome')]
+      links: [t('footer.products.se')]
     },
     {
       title: t('footer.sections.channels'),
@@ -53,13 +53,14 @@ const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
     },
     {
       title: t('footer.sections.about'),
-      links: [t('footer.aboutLinks.story'), t('footer.aboutLinks.join'), t('footer.aboutLinks.global'), t('footer.aboutLinks.sustainable')]
+      links: [t('footer.aboutLinks.story'), t('footer.aboutLinks.join')]
     }
   ];
 
   // Logic to map footer link strings to their corresponding application views
   const handleLinkClick = (link: string) => {
     if (link === t('footer.aboutLinks.story') || link === t('footer.sections.about')) onNavigate('about');
+    else if (link === t('footer.aboutLinks.join')) onNavigate('interview');
     else if (link === t('footer.sections.services') || link === t('footer.services.help') || link === t('footer.services.policy')) onNavigate('support');
     else if (link === t('footer.channels.shop')) onNavigate('shop');
     else if (link === t('footer.products.i2') || link === t('footer.products.se') || link === t('footer.products.swift') || link === t('footer.products.lissome')) onNavigate('detail');

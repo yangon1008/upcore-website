@@ -35,11 +35,9 @@ const AppDownload: React.FC = () => {
               </ul>
             </div>
             <div className="flex flex-col sm:flex-row gap-4 pt-4">
-              <a 
-                href="https://apps.apple.com/cn/app/%E7%AC%91%E5%AE%B9%E5%8A%A0-%E6%99%BA%E8%83%BD%E5%8F%A3%E8%85%94%E5%81%A5%E5%BA%B7%E7%AE%A1%E7%90%86-%E5%88%B7%E7%89%99%E6%8A%A4%E9%BD%BF%E5%A5%BD%E7%AE%A1%E5%AE%B6/id1598312530" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="flex items-center justify-center gap-3 bg-black text-white px-6 py-3 rounded-lg hover:bg-gray-800 transition-colors duration-300"
+              <button 
+                onClick={() => alert('敬请期待！')}
+                className="flex items-center justify-center gap-3 bg-black text-white px-6 py-3 rounded-lg hover:bg-gray-800 transition-colors duration-300 cursor-pointer"
               >
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <path d="M17.5 1H6.5C3.73858 1 1.5 3.23858 1.5 6V18C1.5 20.7614 3.73858 23 6.5 23H17.5C20.2614 23 22.5 20.7614 22.5 18V6C22.5 3.23858 20.2614 1 17.5 1ZM17.5 3C19.1569 3 20.5 4.34315 20.5 6V18C20.5 19.6569 19.1569 21 17.5 21H6.5C4.84315 21 3.5 19.6569 3.5 18V6C3.5 4.34315 4.84315 3 6.5 3H17.5Z" fill="white"/>
@@ -52,12 +50,17 @@ const AppDownload: React.FC = () => {
                   <div className="text-xs text-gray-300">Download on the</div>
                   <div className="font-semibold">App Store</div>
                 </div>
-              </a>
-              <a 
-                href="https://upcore-init.oss-cn-shanghai.aliyuncs.com/appPackage/upcore_debug.apk" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="flex items-center justify-center gap-3 bg-black text-white px-6 py-3 rounded-lg hover:bg-gray-800 transition-colors duration-300"
+              </button>
+              <button 
+                onClick={() => {
+                  const link = document.createElement('a');
+                  link.href = '/upcore_app.apk';
+                  link.download = 'upcore_app.apk';
+                  document.body.appendChild(link);
+                  link.click();
+                  document.body.removeChild(link);
+                }}
+                className="flex items-center justify-center gap-3 bg-black text-white px-6 py-3 rounded-lg hover:bg-gray-800 transition-colors duration-300 cursor-pointer"
               >
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <path d="M17.5 1H6.5C3.73858 1 1.5 3.23858 1.5 6V18C1.5 20.7614 3.73858 23 6.5 23H17.5C20.2614 23 22.5 20.7614 22.5 18V6C22.5 3.23858 20.2614 1 17.5 1ZM17.5 3C19.1569 3 20.5 4.34315 20.5 6V18C20.5 19.6569 19.1569 21 17.5 21H6.5C4.84315 21 3.5 19.6569 3.5 18V6C3.5 4.34315 4.84315 3 6.5 3H17.5Z" fill="white"/>
@@ -68,7 +71,7 @@ const AppDownload: React.FC = () => {
                   <div className="text-xs text-gray-300">Download</div>
                   <div className="font-semibold">Android</div>
                 </div>
-              </a>
+              </button>
             </div>
             <div className="flex items-center gap-2 text-sm text-gray-500">
               <span>{t('app.version')}</span>

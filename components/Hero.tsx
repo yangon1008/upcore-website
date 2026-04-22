@@ -196,7 +196,7 @@ const Hero: React.FC<HeroProps> = ({ onNavigate }) => {
               <span className="absolute inset-0 bg-black/5 scale-x-0 group-hover:scale-x-100 transition-transform duration-500 origin-left"></span>
             </button>
             <button 
-              onClick={() => window.open('https://mall.jd.com/index-1000104683.html?from=pc&spmTag=YTAyMTkuYjAwMjM1Ni5jMDAwMDQ2ODkuMiUyM2hpc2tleXdvcmQlMkNhMDI0MC5iMDAyNDkzLmMwMDAwNDAyNy4xJTIzZW50ZXJfc2hvcA', '_blank')} 
+              onClick={() => alert('敬请期待！')} 
               className="border border-white/20 text-white px-10 py-4 rounded-full font-bold text-lg hover:bg-white/5 transition-all duration-500 backdrop-blur-sm hover:-translate-y-1 active:scale-95 group"
             >
               <span className="relative z-10">{t('hero.buyNow')}</span>

@@ -146,7 +146,7 @@ const Navbar: React.FC<NavbarProps> = ({ onNavigate, initialBg = 'light', curren
           
           {/* 商城按钮 - 渐变背景 + 悬停效果 */}
           <button 
-            onClick={() => window.open('https://mall.jd.com/index-1000104683.html?from=pc&spmTag=YTAyMTkuYjAwMjM1Ni5jMDAwMDQ2ODkuMiUyM2hpc2tleXdvcmQlMkNhMDI0MC5iMDAyNDkzLmMwMDAwNDAyNy4xJTIzZW50ZXJfc2hvcA', '_blank')}
+            onClick={() => alert('敬请期待！')}
             className="
               bg-gradient-to-r from-white to-gray-200 text-black hover:from-gray-100 hover:to-white
               px-4 sm:px-7 py-2 sm:py-3 rounded-full text-[11px] sm:text-[13px] font-bold flex items-center space-x-1 sm:space-x-2

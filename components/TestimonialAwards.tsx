@@ -34,13 +34,7 @@ const TestimonialAwards: React.FC = () => {
 
   // 奖项数据
   const awards = [
-    { id: 1, name: 'YD', year: '2023' },
-    { id: 2, name: 'AsiaOne', year: '2023' },
-    { id: 3, name: 'WGN9', year: '2023' },
-    { id: 4, name: 'Macworld', year: '2023' },
-    { id: 5, name: 'TechHive', year: '2023' },
-    { id: 6, name: 'Yahoo!', year: '2023' },
-    // { id: 7, name: 'AP', year: '2023' },
+    { id: 1, name: '科技中小型', year: '2025' },
   ];
 
   // 评价数据 - 使用翻译系统
@@ -88,23 +82,24 @@ const TestimonialAwards: React.FC = () => {
                 {t('awards.sectionTitle')}
               </h3>
               
-              {/* 奖项网格 */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-6">
+              {/* 奖项展示 */}
+              <div className="flex justify-center">
                 {awards.map((award, index) => (
                   <div
                     key={award.id}
                     className={`
-                      bg-gradient-to-br from-white to-gray-50 p-6 rounded-2xl border border-gray-100
+                      bg-gradient-to-br from-white to-gray-50 p-8 rounded-2xl border border-gray-100
                       hover:border-blue-200 hover:shadow-lg transition-all duration-300 ease-out
                       transform hover:-translate-y-1
                       opacity-0 transition-opacity duration-500 delay-${400 + index * 100}ms
                       ${isVisible ? 'opacity-100' : 'opacity-0'}
+                      min-w-[200px]
                     `}
                   >
-                    <div className="text-3xl font-bold text-center bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-2">
+                    <div className="text-4xl font-bold text-center bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-2">
                       {award.name}
                     </div>
-                    <div className="text-sm text-gray-500 text-center">
+                    <div className="text-base text-gray-500 text-center">
                       {award.year}
                     </div>
 

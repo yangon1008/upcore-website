@@ -136,40 +136,20 @@ const InfoPage: React.FC<InfoPageProps> = ({ type, onBack, onNavigate }) => {
               <div>
                 <h2 className="text-3xl font-bold text-gray-900 mb-8 animate-fade-in" style={{ animationDelay: '1.8s' }}>{t('about.timeline.title')}</h2>
                 <div className="space-y-6">
-                  {/* 2019 */}
-                  <div className="flex gap-4 group animate-fade-in" style={{ animationDelay: '2.0s' }}>
-                    <div className="text-lg font-bold text-gray-900 w-20 group-hover:text-blue-600 transition-colors duration-300">2019</div>
-                    <div className="text-gray-600 group-hover:text-gray-800 transition-colors duration-300">{t('about.timeline.2019')}</div>
-                  </div>
-                  {/* 2020 */}
-                  <div className="flex gap-4 group animate-fade-in" style={{ animationDelay: '2.1s' }}>
-                    <div className="text-lg font-bold text-gray-900 w-20 group-hover:text-blue-600 transition-colors duration-300">2020</div>
-                    <div className="text-gray-600 group-hover:text-gray-800 transition-colors duration-300">{t('about.timeline.2020')}</div>
-                  </div>
-                  {/* 2021 */}
-                  <div className="flex gap-4 group animate-fade-in" style={{ animationDelay: '2.2s' }}>
-                    <div className="text-lg font-bold text-gray-900 w-20 group-hover:text-blue-600 transition-colors duration-300">2021</div>
-                    <div className="text-gray-600 group-hover:text-gray-800 transition-colors duration-300">{t('about.timeline.2021')}</div>
-                  </div>
-                  {/* 2022 */}
-                  <div className="flex gap-4 group animate-fade-in" style={{ animationDelay: '2.3s' }}>
-                    <div className="text-lg font-bold text-gray-900 w-20 group-hover:text-blue-600 transition-colors duration-300">2022</div>
-                    <div className="text-gray-600 group-hover:text-gray-800 transition-colors duration-300">{t('about.timeline.2022')}</div>
-                  </div>
-                  {/* 2023 */}
-                  <div className="flex gap-4 group animate-fade-in" style={{ animationDelay: '2.4s' }}>
-                    <div className="text-lg font-bold text-gray-900 w-20 group-hover:text-blue-600 transition-colors duration-300">2023</div>
-                    <div className="text-gray-600 group-hover:text-gray-800 transition-colors duration-300">{t('about.timeline.2023')}</div>
-                  </div>
                   {/* 2024 */}
-                  <div className="flex gap-4 group animate-fade-in" style={{ animationDelay: '2.5s' }}>
+                  <div className="flex gap-4 group animate-fade-in" style={{ animationDelay: '2.0s' }}>
                     <div className="text-lg font-bold text-gray-900 w-20 group-hover:text-blue-600 transition-colors duration-300">2024</div>
                     <div className="text-gray-600 group-hover:text-gray-800 transition-colors duration-300">{t('about.timeline.2024')}</div>
                   </div>
                   {/* 2025 */}
-                  <div className="flex gap-4 group animate-fade-in" style={{ animationDelay: '2.6s' }}>
+                  <div className="flex gap-4 group animate-fade-in" style={{ animationDelay: '2.2s' }}>
                     <div className="text-lg font-bold text-gray-900 w-20 group-hover:text-blue-600 transition-colors duration-300">2025</div>
                     <div className="text-gray-600 group-hover:text-gray-800 transition-colors duration-300">{t('about.timeline.2025')}</div>
+                  </div>
+                  {/* 2026 */}
+                  <div className="flex gap-4 group animate-fade-in" style={{ animationDelay: '2.4s' }}>
+                    <div className="text-lg font-bold text-gray-900 w-20 group-hover:text-blue-600 transition-colors duration-300">2026</div>
+                    <div className="text-gray-600 group-hover:text-gray-800 transition-colors duration-300">{t('about.timeline.2026')}</div>
                   </div>
                 </div>
               </div>

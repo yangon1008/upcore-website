@@ -164,13 +164,9 @@ export const translations = {
       },
       timeline: {
         title: '发展历程',
-        2019: '成立研发团队，专注于个人护理产品研发。',
-        2020: '推出首款产品，获得市场良好反响。',
-        2021: '销售额突破1000万元，用户满意度达98%。',
-        2022: '完成A轮融资，金额1500万元。',
-        2023: '拓展产品线，进军智能家居领域。',
-        2024: '与多家知名企业达成合作，产品远销海外。',
-        2025: '推出全新一代智能产品，获得多项技术专利。'
+        2024: '李泽湘第一轮投资。',
+        2025: '李泽湘第二轮投资。',
+        2026: '某著名基金（暂时保密）第三轮投资。',
       }
     },
     // LISSOME洗碗机
@@ -416,13 +412,9 @@ export const translations = {
       },
       timeline: {
         title: 'Development History',
-        2019: 'Founded R&D team, focusing on personal care product research and development.',
-        2020: 'Launched first product, received good market response.',
-        2021: 'Sales exceeded 10 million yuan, user satisfaction reached 98%.',
-        2022: 'Completed Series A financing of 15 million yuan.',
-        2023: 'Expanded product line, entered smart home field.',
-        2024: 'Established cooperation with many well-known enterprises, products sold overseas.',
-        2025: 'Launched new generation of smart products, obtained multiple technology patents.'
+        2024: 'Lizexiang first round investment.',
+        2025: 'Lizexiang second round investment.',
+        2026: 'A well-known fund (temporary confidentiality) third round investment.'
       }
     },
     // LISSOME洗碗机

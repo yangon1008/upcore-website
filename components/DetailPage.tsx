@@ -11,19 +11,13 @@ const DetailPage: React.FC<DetailPageProps> = ({ onBack, productName }) => {
   const [isBuying, setIsBuying] = useState(false);
 
   const handleBuy = () => {
-    setIsBuying(true);
-    // 添加购买按钮动画效果
-    setTimeout(() => {
-      // 跳转到指定外部网站
-      window.open('https://mall.jd.com/index-1000104683.html?from=pc&spmTag=YTAyMTkuYjAwMjM1Ni5jMDAwMDQ2ODkuMiUyM2hpc2tleXdvcmQlMkNhMDI0MC5iMDAyNDkzLmMwMDAwNDAyNy4xJTIzZW50ZXJfc2hvcA', '_blank');
-      setIsBuying(false);
-    }, 500);
+    alert('敬请期待！');
   };
 
   return (
     <div className="min-h-screen bg-white text-black font-sans">
       <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100 px-6 py-4 transition-all duration-300">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
+        <div className="flex items-center justify-between">
           {/* Logo */}
           <div className="flex items-center gap-4">
             <img 

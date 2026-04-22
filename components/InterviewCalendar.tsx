@@ -737,7 +737,7 @@ const InterviewCalendar: React.FC<InterviewCalendarProps> = ({
                       left: `${calSlot.dayIndex * dayWidthPercent}%`,
                       width: `${dayWidthPercent}%`,
                       top: `${calSlot.top}px`,
-                      height: `${Math.max(calSlot.height, isBooked && calSlot.bookedByName ? 44 : 24)}px`,
+                      height: `${Math.max(calSlot.height, 24)}px`,
                       transform: 'translateZ(0)',
                     }}
                     title={
