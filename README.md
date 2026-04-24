@@ -117,6 +117,16 @@ npm install --production
 npm install -g pm2
 ```
 
+**重启服务**
+
+```bash
+# 先看一下你的应用列表
+pm2 list
+
+# 重启应用
+pm2 restart upcore-api
+```
+
 **使用 FTP/SFTP 工具**
 
 使用 FileZilla 或其他 FTP 工具，将 `dist/` 目录下的所有文件上传到服务器 `/var/www/website/` 目录。

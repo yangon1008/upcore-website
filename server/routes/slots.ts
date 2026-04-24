@@ -64,10 +64,13 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ success: false, error: '缺少必要参数' });
     }
 
+    const dbDayOfWeek = slotType === 'regular' && dayOfWeek !== undefined ? dayOfWeek : null;
+    const dbSlotDate = slotType === 'specific' && slotDate ? slotDate : null;
+
     const [result] = await pool.execute(
       `INSERT INTO admin_slots (admin_user_id, slot_type, day_of_week, slot_date, start_time, end_time)
        VALUES (?, ?, ?, ?, ?, ?)`,
-      [adminUserId, slotType, dayOfWeek || null, slotDate || null, startTime, endTime]
+      [adminUserId, slotType, dbDayOfWeek, dbSlotDate, startTime, endTime]
     );
 
     const insertResult = result as any;
@@ -83,13 +86,16 @@ router.put('/:id', async (req, res) => {
     const { id } = req.params;
     const { slotType, dayOfWeek, slotDate, startTime, endTime, isActive } = req.body;
 
+    const dbDayOfWeek = slotType === 'regular' && dayOfWeek !== undefined ? dayOfWeek : null;
+    const dbSlotDate = slotType === 'specific' && slotDate ? slotDate : null;
+
     const [result] = await pool.execute(
       `UPDATE admin_slots SET slot_type=?, day_of_week=?, slot_date=?, start_time=?, end_time=?, is_active=?
        WHERE id=?`,
       [
         slotType,
-        dayOfWeek !== undefined ? dayOfWeek : null,
-        slotDate !== undefined ? slotDate : null,
+        dbDayOfWeek,
+        dbSlotDate,
         startTime,
         endTime,
         isActive !== undefined ? isActive : 1,

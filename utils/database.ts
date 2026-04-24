@@ -399,7 +399,7 @@ export async function saveUserInfo(userInfo: UserInfoData): Promise<void> {
   if (!data.success) throw new Error(data.message || '保存用户信息失败');
 }
 
-export async function saveFeishuToken(userId: string, accessToken: string, refreshToken?: string, expiresIn?: number, name?: string, avatarUrl?: string, mobile?: string, email?: string): Promise<void> {
+export async function saveFeishuToken(userId: string, accessToken: string, refreshToken?: string, expiresIn?: number, name?: string, avatarUrl?: string, mobile?: string, email?: string, feishuOpenId?: string): Promise<void> {
   const res = await fetch(`${USERS_BASE}/save-feishu-token`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -411,7 +411,8 @@ export async function saveFeishuToken(userId: string, accessToken: string, refre
       name,
       avatarUrl,
       mobile,
-      email
+      email,
+      feishuOpenId
     })
   });
   const data = await res.json();

@@ -54,7 +54,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
               userInfo.name,
               userInfo.avatar_url,
               userInfo.mobile,
-              userInfo.email
+              userInfo.email,
+              userInfo.open_id
             );
             console.log('飞书令牌保存成功');
           } catch (tokenErr) {
@@ -83,7 +84,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
               userInfo.name,
               userInfo.avatar_url,
               userInfo.mobile,
-              userInfo.email
+              userInfo.email,
+              userInfo.open_id
             );
           } catch (tokenErr) {
             console.error('保存现有飞书令牌失败:', tokenErr);

@@ -162,71 +162,7 @@ async function getUserAccessTokenFromDB(adminUserId: string) {
   }
 }
 
-async function getOrCreateInterviewCalendar(token: string) {
-  try {
-    console.log('正在获取或创建面试日历...');
-    // 首先获取日历列表
-    const res = await fetch(`${FEISHU_BASE_URL}/calendar/v4/calendars`, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
-    });
-    console.log('获取日历列表响应状态:', res.status);
-    const data = await res.json();
-    console.log('获取日历列表响应:', JSON.stringify(data, null, 2));
-    if (data.code !== 0) {
-      console.error('获取日历列表失败:', data.msg);
-      // 直接使用默认日历
-      return 'primary';
-    }
-    
-    const calendars = data.data?.calendar_list || [];
-    console.log('获取到的日历列表:', JSON.stringify(calendars, null, 2));
-    // 查找是否已有"面试"日历
-    const interviewCalendar = calendars.find((cal: any) => cal.summary === '面试');
-    
-    if (interviewCalendar) {
-      console.log('找到已有面试日历:', interviewCalendar.calendar_id);
-      return interviewCalendar.calendar_id;
-    }
-    
-    // 如果没有，创建新的面试日历
-    console.log('创建新的面试日历...');
-    const createRes = await fetch(`${FEISHU_BASE_URL}/calendar/v4/calendars`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      body: JSON.stringify({
-        summary: '面试',
-        description: '面试预约日程',
-        color: parseInt('1890ff', 16), // 天蓝色
-        permissions: 'private'
-      })
-    });
-    console.log('创建日历响应状态:', createRes.status);
-    const createData = await createRes.json();
-    console.log('创建日历响应:', JSON.stringify(createData, null, 2));
-    if (createData.code !== 0) {
-      console.error('创建面试日历失败:', createData.msg);
-      // 直接使用默认日历
-      return 'primary';
-    }
-    
-    const calendarId = createData.data?.calendar?.calendar_id;
-    console.log('创建面试日历成功:', calendarId);
-    return calendarId || 'primary';
-  } catch (error: any) {
-    console.error('获取或创建面试日历异常:', error.message);
-    console.error('获取或创建面试日历异常详细信息:', error);
-    // 如果失败，回退到使用默认日历
-    return 'primary';
-  }
-}
-
-async function createFeishuEvent(token: string, summary: string, startTime: string, endTime: string, userId: string, calendarId?: string, color?: string, userIntroduction?: string) {
+async function createFeishuEvent(token: string, summary: string, startTime: string, endTime: string, userId: string, color?: string, userIntroduction?: string) {
   let currentToken = token;
   let retryCount = 0;
   const maxRetries = 1;
@@ -237,25 +173,40 @@ async function createFeishuEvent(token: string, summary: string, startTime: stri
       console.log('使用的 token:', currentToken.substring(0, 20) + '...');
       console.log('重试次数:', retryCount);
       
-      // 获取或创建面试日历
-      const finalCalendarId = calendarId || await getOrCreateInterviewCalendar(currentToken);
+      // 直接使用 primary 主日历，避免日历权限问题
+      const finalCalendarId = 'primary';
       console.log('使用的日历ID:', finalCalendarId);
+      
+      // 从数据库获取用户的飞书 open_id
+      let feishuOpenId: string | null = null;
+      try {
+        const [userRows] = await pool.query(
+          'SELECT feishu_open_id FROM user_info WHERE user_id = ?',
+          [userId]
+        );
+        if (Array.isArray(userRows) && userRows.length > 0) {
+          feishuOpenId = (userRows[0] as any).feishu_open_id || null;
+        }
+        console.log('获取到的飞书 open_id:', feishuOpenId);
+      } catch (dbErr) {
+        console.error('获取用户飞书 open_id 失败:', dbErr);
+      }
       
       console.log('参数:', {
         summary,
         startTime,
         endTime,
         userId,
-        calendarId: finalCalendarId,
         color,
-        userIntroduction
+        userIntroduction,
+        feishuOpenId
       });
       
       // 天蓝色的十六进制颜色代码转换为整数，默认天蓝色
       const colorInt = color ? parseInt(color.replace('#', ''), 16) : parseInt('1890ff', 16);
       
       // 构建请求体 - 根据飞书 API 文档要求
-      const requestBody = {
+      const requestBody: any = {
         summary: summary,
         description: userIntroduction || `面试预约：${summary}`,
         start_time: {
@@ -267,17 +218,39 @@ async function createFeishuEvent(token: string, summary: string, startTime: stri
           time_zone: 'Asia/Shanghai'
         },
         vchat: {
-          vc_type: 'vc'
+          vc_type: 'vc',
+          icon_type: 'vc',
+          description:"飞书视频会议",
+          meeting_settings: {
+            open_lobby: false,
+            allow_attendees_start: true
+          }
         },
         visibility: 'default',
+        attendee_ability: 'can_modify_event',
         need_notification: true,
         color: colorInt
       };
       
+      // 如果有飞书 open_id，则添加 assign_hosts 到 vchat.meeting_settings
+      if (feishuOpenId) {
+        requestBody.vchat.meeting_settings.assign_hosts = [feishuOpenId];
+      }
+      
       console.log('请求体:', JSON.stringify(requestBody, null, 2));
       
+      // 构建查询参数
+      const queryParams = new URLSearchParams();
+      if (feishuOpenId) {
+        queryParams.append('user_id_type', 'open_id');
+      }
+      
       // 创建日程
-      const res = await fetch(`${FEISHU_BASE_URL}/calendar/v4/calendars/${finalCalendarId}/events`, {
+      const url = queryParams.toString() 
+        ? `${FEISHU_BASE_URL}/calendar/v4/calendars/${finalCalendarId}/events?${queryParams.toString()}`
+        : `${FEISHU_BASE_URL}/calendar/v4/calendars/${finalCalendarId}/events`;
+      
+      const res = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -295,17 +268,38 @@ async function createFeishuEvent(token: string, summary: string, startTime: stri
         console.warn('检测到令牌过期错误');
         if (retryCount < maxRetries) {
           console.log('尝试刷新令牌并重试...');
-          // 如果是第一次失败，尝试刷新令牌
-          const newToken = await getUserAccessTokenFromDB(userId);
-          if (newToken && newToken !== currentToken) {
-            currentToken = newToken;
-            retryCount++;
-            console.log('令牌刷新成功，继续重试...');
-            continue;
-          } else {
-            console.warn('无法刷新令牌，抛出错误');
-            throw new Error(`创建飞书日程失败: ${data.msg} (code: ${data.code})`);
+          
+          // 直接从数据库获取 refresh token 并刷新
+          try {
+            const [rows] = await pool.execute(
+              'SELECT feishu_user_refresh_token FROM user_info WHERE user_id = ?',
+              [userId]
+            );
+            
+            if (Array.isArray(rows) && rows.length > 0) {
+              const refreshToken = (rows[0] as any).feishu_user_refresh_token;
+              
+              if (refreshToken) {
+                console.log('找到 Refresh Token，尝试刷新...');
+                const newTokens = await refreshFeishuUserAccessToken(refreshToken);
+                await saveFeishuTokensToDB(
+                  userId,
+                  newTokens.access_token,
+                  newTokens.refresh_token,
+                  newTokens.expires_in
+                );
+                currentToken = newTokens.access_token;
+                retryCount++;
+                console.log('令牌刷新成功，继续重试...');
+                continue;
+              }
+            }
+          } catch (refreshErr: any) {
+            console.error('刷新令牌异常:', refreshErr.message);
           }
+          
+          console.warn('无法刷新令牌，抛出错误');
+          throw new Error(`创建飞书日程失败: ${data.msg} (code: ${data.code})`);
         } else {
           console.warn('已达到最大重试次数');
           throw new Error(`创建飞书日程失败: ${data.msg} (code: ${data.code})`);
@@ -317,7 +311,7 @@ async function createFeishuEvent(token: string, summary: string, startTime: stri
       }
       
       console.log('飞书日程事件:', JSON.stringify(data.data?.event, null, 2));
-      return { event: data.data?.event, calendarId: finalCalendarId };
+      return { event: data.data?.event };
     } catch (error: any) {
       // 如果是在重试过程中抛出的错误，直接抛出
       if (retryCount > 0) {
@@ -408,20 +402,21 @@ router.post('/', async (req, res) => {
           }
         }
         
-        // 第一步：先创建飞书日程（暂时不设置description）
+        // 直接使用面试者的介绍信息作为 description
+        const description = userIntroduction || `面试预约：面试-${regularUserName}-${jobPositionName || '未知岗位'}`;
+        
+        // 创建飞书日程
         const result = await createFeishuEvent(
           token,
           `面试-${regularUserName}-${jobPositionName || '未知岗位'}`,
           `${bookingDate}T${startTime}+08:00`,
           `${bookingDate}T${endTime}+08:00`,
           adminUserId,
-          req.body.calendarId,
           req.body.color,
-          ''  // 暂时不设置description
+          description
         );
 
         const event = result.event;
-        const feishuCalendarId = result.calendarId;
         feishuEventId = event?.event_id || event?.id || null;
         // 尝试从多个可能的字段获取会议链接
         feishuMeetingUrl = event?.meeting_url || 
@@ -434,52 +429,13 @@ router.post('/', async (req, res) => {
                           event?.video_conference?.vc_url ||
                           event?.video_conference?.join_url ||
                           null;
-        console.log('✅ 飞书日程创建成功:', { feishuEventId, feishuMeetingUrl, feishuCalendarId, fullEvent: event });
+        console.log('✅ 飞书日程创建成功:', { feishuEventId, feishuMeetingUrl, fullEvent: event });
 
-        // 第二步：如果有会议链接，更新日程的description，添加会议链接
-        if (feishuMeetingUrl && feishuEventId) {
-          try {
-            console.log('========== 开始更新飞书日程description ==========');
-            console.log('会议链接:', feishuMeetingUrl);
-            console.log('用户简介:', userIntroduction);
-            
-            // 构建新的description
-            const newDescription = `飞书会议链接： ${feishuMeetingUrl} 
-个人简介：${userIntroduction || '暂无个人简介'}`;
-            
-            console.log('新的description:', newDescription);
-            
-            // 更新飞书日程
-            const updateRes = await fetch(`${FEISHU_BASE_URL}/calendar/v4/calendars/${feishuCalendarId}/events/${feishuEventId}`, {
-              method: 'PATCH',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-              },
-              body: JSON.stringify({
-                description: newDescription
-              })
-            });
-            
-            console.log('更新飞书日程响应状态:', updateRes.status);
-            const updateData = await updateRes.json();
-            console.log('更新飞书日程响应:', JSON.stringify(updateData, null, 2));
-            
-            if (updateData.code === 0) {
-              console.log('✅ 飞书日程description更新成功');
-            } else {
-              console.error('⚠️ 飞书日程description更新失败:', updateData.msg);
-            }
-          } catch (updateErr: any) {
-            console.error('⚠️ 更新飞书日程description失败(不影响预约):', updateErr.message);
-          }
-        }
-
-        if (feishuEventId || feishuMeetingUrl || feishuCalendarId) {
+        if (feishuEventId || feishuMeetingUrl) {
           console.log('更新预约记录，添加飞书信息...');
           await pool.execute(
-            `UPDATE bookings SET feishu_event_id=?, feishu_meeting_url=?, feishu_calendar_id=? WHERE id=?`,
-            [feishuEventId, feishuMeetingUrl, feishuCalendarId, bookingId]
+            `UPDATE bookings SET feishu_event_id=?, feishu_meeting_url=? WHERE id=?`,
+            [feishuEventId, feishuMeetingUrl, bookingId]
           );
           console.log('✅ 预约记录更新成功');
         }
@@ -609,7 +565,7 @@ router.delete('/:id', async (req, res) => {
 
     // 获取预约记录的详细信息
     const [rows] = await pool.execute(
-      `SELECT admin_user_id, feishu_event_id, feishu_calendar_id FROM bookings WHERE id=? AND status='confirmed'`,
+      `SELECT admin_user_id, feishu_event_id FROM bookings WHERE id=? AND status='confirmed'`,
       [id]
     ) as any[];
 
@@ -621,18 +577,13 @@ router.delete('/:id', async (req, res) => {
         try {
           console.log('========== 开始删除飞书日程 ==========');
           console.log('预约ID:', id);
-          console.log('飞书日历ID:', booking.feishu_calendar_id);
           console.log('飞书事件ID:', booking.feishu_event_id);
           
           // 获取用户访问令牌
           const token = await getUserAccessTokenFromDB(booking.admin_user_id);
           
           if (token) {
-            // 使用保存的日历ID，如果没有则使用primary
-            const calendarId = booking.feishu_calendar_id || 'primary';
-            console.log('使用日历ID:', calendarId);
-            
-            const deleteRes = await fetch(`${FEISHU_BASE_URL}/calendar/v4/calendars/${calendarId}/events/${booking.feishu_event_id}`, {
+            const deleteRes = await fetch(`${FEISHU_BASE_URL}/calendar/v4/calendars/primary/events/${booking.feishu_event_id}`, {
               method: 'DELETE',
               headers: { 'Authorization': `Bearer ${token}` }
             });

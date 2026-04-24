@@ -89,7 +89,7 @@ router.post('/save', async (req, res) => {
 // 保存用户的飞书访问令牌
 router.post('/save-feishu-token', async (req, res) => {
   try {
-    const { userId, accessToken, refreshToken, expiresIn, name, avatarUrl, mobile } = req.body;
+    const { userId, accessToken, refreshToken, expiresIn, name, avatarUrl, mobile, feishuOpenId } = req.body;
     
     if (!userId || !accessToken) {
       return res.status(400).json({ success: false, message: '缺少必要参数' });
@@ -112,14 +112,14 @@ router.post('/save-feishu-token', async (req, res) => {
     if (Array.isArray(existing) && existing.length > 0) {
       // 更新现有用户的令牌和信息
       await pool.query(
-        'UPDATE user_info SET feishu_user_access_token = ?, feishu_user_refresh_token = ?, feishu_token_expires_at = ?, name = COALESCE(?, name), avatar_url = COALESCE(?, avatar_url), phone = COALESCE(?, phone) WHERE user_id = ?',
-        [accessToken, refreshToken || null, expiresAt, name || null, avatarUrl || null, mobile || null, userId]
+        'UPDATE user_info SET feishu_user_access_token = ?, feishu_user_refresh_token = ?, feishu_token_expires_at = ?, name = COALESCE(?, name), avatar_url = COALESCE(?, avatar_url), phone = COALESCE(?, phone), feishu_open_id = COALESCE(?, feishu_open_id) WHERE user_id = ?',
+        [accessToken, refreshToken || null, expiresAt, name || null, avatarUrl || null, mobile || null, feishuOpenId || null, userId]
       );
     } else {
       // 创建新用户并保存令牌
       await pool.query(
-        'INSERT INTO user_info (user_id, name, avatar_url, phone, feishu_user_access_token, feishu_user_refresh_token, feishu_token_expires_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
-        [userId, name || '未知用户', avatarUrl || null, mobile || null, accessToken, refreshToken || null, expiresAt]
+        'INSERT INTO user_info (user_id, name, avatar_url, phone, feishu_user_access_token, feishu_user_refresh_token, feishu_token_expires_at, feishu_open_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+        [userId, name || '未知用户', avatarUrl || null, mobile || null, accessToken, refreshToken || null, expiresAt, feishuOpenId || null]
       );
     }
 
