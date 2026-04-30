@@ -56,7 +56,7 @@ router.get('/', async (req, res) => {
 
     const [rows] = await pool.execute(
       `SELECT id, code, created_at as createdAt, expires_at as expiresAt,
-              is_used as isUsed, used_by_name as usedByName
+              is_used as isUsed, used_by_name as usedByName, is_copied as isCopied
        FROM invitation_codes
        WHERE admin_user_id = ?
        AND expires_at > NOW()
@@ -67,6 +67,27 @@ router.get('/', async (req, res) => {
     res.json({ success: true, data: rows });
   } catch (error: any) {
     console.error('获取邀请码列表失败:', error);
+    res.status(500).json({ success: false, error: '服务器内部错误' });
+  }
+});
+
+router.put('/:code/copied', async (req, res) => {
+  try {
+    const { code } = req.params;
+    if (!code) {
+      return res.status(400).json({ success: false, error: '缺少邀请码参数' });
+    }
+
+    const normalizedCode = code.toUpperCase().trim();
+    
+    await pool.execute(
+      `UPDATE invitation_codes SET is_copied = 1 WHERE code = ?`,
+      [normalizedCode]
+    );
+
+    res.json({ success: true, message: '邀请码标记为已复制' });
+  } catch (error: any) {
+    console.error('标记复制状态失败:', error);
     res.status(500).json({ success: false, error: '服务器内部错误' });
   }
 });
@@ -137,16 +158,16 @@ router.post('/verify', async (req, res) => {
 
     res.json({
       success: true,
-        data: {
-          valid: true,
-          codeInfo: {
-            code: inviteCode.code,
-            adminUserId: inviteCode.admin_user_id,
-            adminUserName: inviteCode.admin_user_name,
-            expiresAt: new Date(inviteCode.expires_at).toISOString()
-          },
-          userId
-        }
+      data: {
+        valid: true,
+        codeInfo: {
+          code: inviteCode.code,
+          adminUserId: inviteCode.admin_user_id,
+          adminUserName: inviteCode.admin_user_name,
+          expiresAt: new Date(inviteCode.expires_at).toISOString()
+        },
+        userId
+      }
     });
   } catch (error: any) {
     console.error('验证邀请码失败:', error);

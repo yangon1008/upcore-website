@@ -13,6 +13,9 @@ interface CalendarSlot {
   originalSlot: SlotData;
   isBooked?: boolean;
   bookedByName?: string;
+  booking?: BookingData;
+  groupIndex?: number; // 在重叠组中的索引
+  groupSize?: number; // 重叠组的大小
 }
 
 interface InterviewCalendarProps {
@@ -48,6 +51,10 @@ const InterviewCalendar: React.FC<InterviewCalendarProps> = ({
   const [dialogMode, setDialogMode] = useState<'create' | 'edit'>('create');
   const [editingSlot, setEditingSlot] = useState<SlotData | null>(null);
 
+  // 预约详情弹窗状态
+  const [showBookingDetail, setShowBookingDetail] = useState(false);
+  const [selectedBooking, setSelectedBooking] = useState<BookingData | null>(null);
+
   // 日期选择器状态
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [tempDate, setTempDate] = useState<Date>(new Date());
@@ -55,6 +62,24 @@ const InterviewCalendar: React.FC<InterviewCalendarProps> = ({
 
   // 滚动 ref
   const gridRef = useRef<HTMLDivElement>(null);
+
+  // 拖拽相关状态
+  const [draggingSlotId, setDraggingSlotId] = useState<string | number | null>(null);
+  const [dragStartPos, setDragStartPos] = useState<{ x: number; y: number } | null>(null);
+  const [dragOffset, setDragOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [isShaking, setIsShaking] = useState(false);
+
+  // 拖拽时的临时数据
+  const dragDataRef = useRef<{
+    originalSlot: CalendarSlot;
+    startMinutes: number;
+    durationMinutes: number;
+    originalDayIndex: number;
+  } | null>(null);
+  const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const isLongPressTriggeredRef = useRef(false);
+  const shakeIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // 月份日历数据类型
   interface CalendarDay {
@@ -178,6 +203,7 @@ const InterviewCalendar: React.FC<InterviewCalendarProps> = ({
     const results: CalendarSlot[] = [];
     let bookedCount = 0;
 
+    // 第一步：生成所有时段
     displaySlots.forEach((slot) => {
       if (slot.slotType === 'specific' && slot.slotDate) {
         // 解析本地日期字符串而不是依赖Date构造函数的时区处理
@@ -223,8 +249,10 @@ const InterviewCalendar: React.FC<InterviewCalendarProps> = ({
             name: b.regularUserName 
           })));
           
+          // 优先用 slotId 匹配（新数据），如果没有 slotId 则用日期和时间匹配（兼容历史数据）
           const booking = bookings.find(
-            b => normalizeDate(b.bookingDate) === slotDateStr && normalizeTime(b.startTime) === slotTimeNorm
+            b => (b.slotId && slot.id && b.slotId === slot.id) ||
+                 (!b.slotId && normalizeDate(b.bookingDate) === slotDateStr && normalizeTime(b.startTime) === slotTimeNorm)
           );
           
           if (booking) {
@@ -244,6 +272,7 @@ const InterviewCalendar: React.FC<InterviewCalendarProps> = ({
             originalSlot: slot,
             isBooked: !!booking,
             bookedByName: booking?.regularUserName,
+            booking,
           });
         }
       } else if (slot.slotType === 'regular' && slot.dayOfWeek !== undefined) {
@@ -274,8 +303,10 @@ const InterviewCalendar: React.FC<InterviewCalendarProps> = ({
         
         console.log(`检查常驻时段: ${slotDateStr} ${slot.startTime} (标准化: ${slotTimeNorm}, 星期${dayIndex})`);
         
+        // 优先用 slotId 匹配（新数据），如果没有 slotId 则用日期和时间匹配（兼容历史数据）
         const booking = bookings.find(
-          b => normalizeDate(b.bookingDate) === slotDateStr && normalizeTime(b.startTime) === slotTimeNorm
+          b => (b.slotId && slot.id && b.slotId === slot.id) ||
+               (!b.slotId && normalizeDate(b.bookingDate) === slotDateStr && normalizeTime(b.startTime) === slotTimeNorm)
         );
         
         if (booking) {
@@ -295,8 +326,69 @@ const InterviewCalendar: React.FC<InterviewCalendarProps> = ({
           originalSlot: slot,
           isBooked: !!booking,
           bookedByName: booking?.regularUserName,
+          booking,
         });
       }
+    });
+    
+    // 第二步：检测重叠时段并分组
+    // 按天索引分组
+    const slotsByDay: { [dayIndex: number]: CalendarSlot[] } = {};
+    results.forEach(slot => {
+      if (!slotsByDay[slot.dayIndex]) {
+        slotsByDay[slot.dayIndex] = [];
+      }
+      slotsByDay[slot.dayIndex].push(slot);
+    });
+
+    // 对每一天的时段进行重叠检测和分组
+    Object.keys(slotsByDay).forEach(dayIndexStr => {
+      const dayIndex = Number(dayIndexStr);
+      const daySlots = slotsByDay[dayIndex];
+      
+      // 按时段开始时间排序
+      daySlots.sort((a, b) => a.startTime.getTime() - b.startTime.getTime());
+      
+      // 找出重叠的时段组
+      const overlappingGroups: CalendarSlot[][] = [];
+      const usedSlots = new Set<CalendarSlot>();
+      
+      daySlots.forEach(slot => {
+        if (usedSlots.has(slot)) return;
+        
+        // 查找与此时段重叠的其他时段（时间重叠）
+        const overlapping: CalendarSlot[] = [slot];
+        usedSlots.add(slot);
+        
+        daySlots.forEach(otherSlot => {
+          if (slot === otherSlot || usedSlots.has(otherSlot)) return;
+          
+          // 检查时间是否重叠
+          const slotStart = slot.startTime.getTime();
+          const slotEnd = slot.endTime.getTime();
+          const otherStart = otherSlot.startTime.getTime();
+          const otherEnd = otherSlot.endTime.getTime();
+          
+          // 时间重叠检测
+          if (
+            (slotStart < otherEnd && slotEnd > otherStart) ||
+            (otherStart < slotEnd && otherEnd > slotStart)
+          ) {
+            overlapping.push(otherSlot);
+            usedSlots.add(otherSlot);
+          }
+        });
+        
+        overlappingGroups.push(overlapping);
+      });
+      
+      // 设置每个时段的分组信息
+      overlappingGroups.forEach(group => {
+        group.forEach((slot, index) => {
+          slot.groupSize = group.length;
+          slot.groupIndex = index;
+        });
+      });
     });
     
     console.log(`总共找到 ${bookedCount} 个已预约时段`);
@@ -337,6 +429,24 @@ const InterviewCalendar: React.FC<InterviewCalendarProps> = ({
   const parseTime = (timeStr: string): { hour: number; minute: number } => {
     const [hour, minute] = timeStr.split(':').map(Number);
     return { hour, minute };
+  };
+
+  // 辅助函数：时间字符串转换为分钟
+  const timeToMinutes = (time: string) => {
+    const { hour, minute } = parseTime(time);
+    return hour * 60 + minute;
+  };
+
+  // 辅助函数：分钟转换为时间字符串
+  const minutesToTime = (totalMinutes: number) => {
+    const hour = Math.floor(totalMinutes / 60) % 24;
+    const minute = totalMinutes % 60;
+    return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+  };
+
+  // 辅助函数：15分钟吸附
+  const snapTo15Minutes = (minutes: number) => {
+    return Math.round(minutes / 15) * 15;
   };
 
   // 打开创建对话框
@@ -461,29 +571,42 @@ const InterviewCalendar: React.FC<InterviewCalendarProps> = ({
     const rect = cell.getBoundingClientRect();
     const clickY = event.clientY - rect.top;
     const minuteOffset = Math.round((clickY / rect.height) * 60);
-    const clickedMinute = Math.round(minuteOffset / 15) * 15;
+    const clickedMinute = Math.round(minuteOffset / 30) * 30;
 
     const clickedDate = weekDates[dayIndex];
     const startHour = hour;
-    const startMinute = clickedMinute;
+    const startMinute = clickedMinute >= 60 ? 0 : clickedMinute;
+    const adjustedStartHour = clickedMinute >= 60 ? startHour + 1 : startHour;
 
-    let endHour = startHour + 1;
-    let endMinute = startMinute;
+    // 默认时长为30分钟
+    let endHour = adjustedStartHour;
+    let endMinute = startMinute + 30;
+    
+    if (endMinute >= 60) {
+      endMinute = endMinute - 60;
+      endHour = endHour + 1;
+    }
+    
     if (endHour >= 24) {
       endHour = 23;
       endMinute = 59;
     }
 
-    openCreateDialog(clickedDate, startHour, startMinute, endHour, endMinute, dayIndex);
+    openCreateDialog(clickedDate, adjustedStartHour, startMinute, endHour, endMinute, dayIndex);
   };
 
   // 点击时段块显示编辑对话框
   const handleSlotClick = (calendarSlot: CalendarSlot, event: React.MouseEvent) => {
     event.stopPropagation();
+    clearLongPressTimer();
+
+    // 如果是长按触发的，则不处理点击
+    if (isLongPressTriggeredRef.current || draggingSlotId !== null) {
+      return;
+    }
 
     // 已预约的时段不可编辑
     if (calendarSlot.isBooked) {
-      alert(`该时段已被 ${calendarSlot.bookedByName} 预约，无法编辑`);
       return;
     }
 
@@ -501,6 +624,176 @@ const InterviewCalendar: React.FC<InterviewCalendarProps> = ({
     setShowDialog(true);
   };
 
+  // 清除长按定时器
+  const clearLongPressTimer = () => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  };
+
+  // 开始拖拽
+  const startDrag = (slot: CalendarSlot, e: React.MouseEvent | React.TouchEvent) => {
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+
+    const startMinutes = timeToMinutes(slot.originalSlot.startTime);
+    const durationMinutes = timeToMinutes(slot.originalSlot.endTime) - startMinutes;
+
+    dragDataRef.current = {
+      originalSlot: slot,
+      startMinutes,
+      durationMinutes,
+      originalDayIndex: slot.dayIndex
+    };
+
+    setDragStartPos({ x: clientX, y: clientY });
+    setDraggingSlotId(slot.id);
+    setIsDragging(false);
+  };
+
+  // 鼠标/触摸按下 - 开始长按检测
+  const handleSlotMouseDown = (slot: CalendarSlot, e: React.MouseEvent | React.TouchEvent) => {
+    if (slot.isBooked) return;
+
+    e.stopPropagation();
+    e.preventDefault();
+
+    isLongPressTriggeredRef.current = false;
+    setIsShaking(false);
+    setDragOffset({ x: 0, y: 0 });
+
+    // 设置长按定时器
+    longPressTimerRef.current = setTimeout(() => {
+      isLongPressTriggeredRef.current = true;
+      setIsShaking(true);
+      startDrag(slot, e);
+    }, 500);
+  };
+
+  // 鼠标/触摸移动
+  const handleDragMove = (e: MouseEvent | TouchEvent) => {
+    if (!dragStartPos || !dragDataRef.current || draggingSlotId === null) return;
+
+    const clientX = 'touches' in e ? (e as TouchEvent).touches[0].clientX : (e as MouseEvent).clientX;
+    const clientY = 'touches' in e ? (e as TouchEvent).touches[0].clientY : (e as MouseEvent).clientY;
+
+    const offsetX = clientX - dragStartPos.x;
+    const offsetY = clientY - dragStartPos.y;
+
+    setDragOffset({ x: offsetX, y: offsetY });
+
+    if (!isDragging && (Math.abs(offsetX) > 5 || Math.abs(offsetY) > 5)) {
+      setIsDragging(true);
+      setIsShaking(false); // 开始拖动时停止晃动
+    }
+  };
+
+  // 鼠标/触摸释放
+  const handleDragEnd = async () => {
+    clearLongPressTimer();
+
+    if (isDragging && dragDataRef.current && draggingSlotId !== null) {
+      // 计算新的时间
+      const { originalSlot, startMinutes, durationMinutes, originalDayIndex } = dragDataRef.current;
+
+      // 计算垂直偏移对应的分钟数
+      const minutesPerPixel = 60 / ROW_HEIGHT;
+      const totalMinuteOffset = dragOffset.y * minutesPerPixel;
+
+      // 15分钟吸附
+      const snappedStartMinutes = snapTo15Minutes(startMinutes + totalMinuteOffset);
+
+      // 边界处理
+      let newStartMinutes = Math.max(0, Math.min(24 * 60 - durationMinutes, snappedStartMinutes));
+      let newEndMinutes = newStartMinutes + durationMinutes;
+
+      // 计算水平偏移对应的天数
+      const dayWidthPercent = 100 / 7;
+      const gridRect = gridRef.current?.getBoundingClientRect();
+      const gridWidth = gridRect?.width || 1;
+      const pixelsPerDay = gridWidth / 7;
+      const dayOffset = Math.round(dragOffset.x / pixelsPerDay);
+
+      let newDayIndex = originalDayIndex + dayOffset;
+      newDayIndex = Math.max(0, Math.min(6, newDayIndex));
+
+      // 更新数据
+      const updatedSlot: SlotData = {
+        ...originalSlot.originalSlot,
+        startTime: minutesToTime(newStartMinutes),
+        endTime: minutesToTime(newEndMinutes),
+        ...(originalSlot.originalSlot.slotType === 'regular'
+          ? { dayOfWeek: newDayIndex }
+          : { slotDate: weekDates[newDayIndex].toISOString().split('T')[0] })
+      };
+
+      try {
+        if (adminUserId && updatedSlot.id) {
+          await updateSlot(updatedSlot.id, updatedSlot);
+        }
+        const newSlots = displaySlots.map(s =>
+          s.id === originalSlot.originalSlot.id ? updatedSlot : s
+        );
+        onSlotChange?.(newSlots);
+      } catch (err: any) {
+        alert('更新时段失败: ' + err.message);
+      }
+    }
+
+    // 重置状态
+    setDraggingSlotId(null);
+    setDragStartPos(null);
+    setDragOffset({ x: 0, y: 0 });
+    setIsDragging(false);
+    setIsShaking(false);
+    dragDataRef.current = null;
+    isLongPressTriggeredRef.current = false;
+  };
+
+
+
+  // 添加全局拖拽事件监听
+  useEffect(() => {
+    if (dragStartPos) {
+      window.addEventListener('mousemove', handleDragMove);
+      window.addEventListener('mouseup', handleDragEnd);
+      window.addEventListener('touchmove', handleDragMove);
+      window.addEventListener('touchend', handleDragEnd);
+      window.addEventListener('touchcancel', handleDragEnd);
+    }
+
+    return () => {
+      window.removeEventListener('mousemove', handleDragMove);
+      window.removeEventListener('mouseup', handleDragEnd);
+      window.removeEventListener('touchmove', handleDragMove);
+      window.removeEventListener('touchend', handleDragEnd);
+      window.removeEventListener('touchcancel', handleDragEnd);
+    };
+  }, [dragStartPos, isDragging, dragOffset]);
+
+  // 晃动动画效果 - 一直晃动直到开始拖动
+  const [shakeToggle, setShakeToggle] = useState(false);
+
+  useEffect(() => {
+    if (isShaking && !isDragging && draggingSlotId !== null) {
+      shakeIntervalRef.current = setInterval(() => {
+        setShakeToggle(prev => !prev);
+      }, 150);
+    } else {
+      if (shakeIntervalRef.current) {
+        clearInterval(shakeIntervalRef.current);
+        shakeIntervalRef.current = null;
+      }
+    }
+
+    return () => {
+      if (shakeIntervalRef.current) {
+        clearInterval(shakeIntervalRef.current);
+      }
+    };
+  }, [isShaking, isDragging, draggingSlotId]);
+
   // ESC 键关闭对话框
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
@@ -514,7 +807,7 @@ const InterviewCalendar: React.FC<InterviewCalendarProps> = ({
   }, [showDialog]);
 
   return (
-    <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden" style={{ minHeight: '600px' }}>
+    <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden relative" style={{ minHeight: '600px' }}>
       {/* 顶部导航栏 */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 bg-gray-50">
         <div className="flex items-center space-x-3">
@@ -559,16 +852,16 @@ const InterviewCalendar: React.FC<InterviewCalendarProps> = ({
         <>
           {/* 透明遮罩层 - 点击关闭 */}
           <div
-            className="fixed inset-0 z-[99] bg-transparent"
+            className="absolute inset-0 z-[99] bg-transparent"
             onClick={() => setShowDatePicker(false)}
           />
 
           {/* 月份日历浮层 - 完全遮挡下方内容 */}
           <div
-            className="fixed z-[100] bg-white rounded-xl shadow-2xl p-5 w-[340px]"
+            className="absolute z-[100] bg-white rounded-xl shadow-2xl p-5 w-[340px]"
             style={{
-              top: '70vh',
-              left: '50vh',
+              top: '60px',
+              left: '35%',
               transform: 'translateX(-50%)'
             }}
             onClick={(e) => e.stopPropagation()}
@@ -722,45 +1015,104 @@ const InterviewCalendar: React.FC<InterviewCalendarProps> = ({
                 const isSpecific = calSlot.slotType === 'specific';
                 const dayWidthPercent = 100 / 7;
                 const isBooked = calSlot.isBooked;
+                const isDraggingThis = draggingSlotId === calSlot.id;
+                const groupSize = calSlot.groupSize || 1;
+                const groupIndex = calSlot.groupIndex || 0;
+
+                // 计算拖拽时的位置
+                let currentLeft = calSlot.dayIndex * dayWidthPercent + (groupIndex / groupSize) * dayWidthPercent;
+                let currentWidth = dayWidthPercent / groupSize;
+                let currentTop = calSlot.top;
+                let displayStartTime = calSlot.originalSlot.startTime.slice(0, 5);
+                let displayEndTime = calSlot.originalSlot.endTime.slice(0, 5);
+
+                if (isDraggingThis && dragDataRef.current) {
+                  const { startMinutes, durationMinutes, originalDayIndex } = dragDataRef.current;
+                  const gridRect = gridRef.current?.getBoundingClientRect();
+                  const gridWidth = gridRect?.width || 1;
+                  const pixelsPerDay = gridWidth / 7;
+                  const dayOffset = Math.round(dragOffset.x / pixelsPerDay);
+                  let newDayIndex = originalDayIndex + dayOffset;
+                  newDayIndex = Math.max(0, Math.min(6, newDayIndex));
+                  currentLeft = newDayIndex * dayWidthPercent;
+                  currentWidth = dayWidthPercent; // 拖拽时使用完整宽度
+
+                  const minutesPerPixel = 60 / ROW_HEIGHT;
+                  const totalMinuteOffset = dragOffset.y * minutesPerPixel;
+                  const snappedStartMinutes = snapTo15Minutes(startMinutes + totalMinuteOffset);
+                  let newStartMinutes = Math.max(0, Math.min(24 * 60 - durationMinutes, snappedStartMinutes));
+                  let newEndMinutes = newStartMinutes + durationMinutes;
+                  currentTop = (newStartMinutes / 60) * ROW_HEIGHT;
+
+                  displayStartTime = minutesToTime(newStartMinutes);
+                  displayEndTime = minutesToTime(newEndMinutes);
+                }
 
                 return (
-                  <div
-                    key={calSlot.id}
-                    className={`absolute z-10 rounded px-2 py-1 text-xs font-medium transition-all overflow-hidden ${
-                      isBooked
-                        ? 'bg-gray-100 border-l-[3px] border-gray-400 text-gray-500 cursor-not-allowed opacity-70'
-                        : isSpecific
-                          ? 'bg-blue-50/80 border-l-[3px] border-blue-500 text-blue-700 cursor-pointer hover:bg-blue-100 hover:shadow-md hover:scale-[1.02]'
-                          : 'bg-green-50/80 border-l-[3px] border-green-500 text-green-700 cursor-pointer hover:bg-green-100 hover:shadow-md hover:scale-[1.02]'
-                    }`}
-                    style={{
-                      left: `${calSlot.dayIndex * dayWidthPercent}%`,
-                      width: `${dayWidthPercent}%`,
-                      top: `${calSlot.top}px`,
-                      height: `${Math.max(calSlot.height, 24)}px`,
-                      transform: 'translateZ(0)',
-                    }}
-                    title={
-                      isBooked
-                        ? `已预约: ${calSlot.bookedByName || ''}`
-                        : `${isSpecific ? '特定日期' : '常驻'}时段: ${calSlot.originalSlot.startTime.slice(0, 5)}-${calSlot.originalSlot.endTime.slice(0, 5)}`
-                    }
-                    onClick={(e) => !isBooked && handleSlotClick(calSlot, e)}
-                  >
-                    <div className="flex items-start justify-between w-full">
-                      <span className="truncate">{calSlot.originalSlot.startTime.slice(0, 5)}-{calSlot.originalSlot.endTime.slice(0, 5)}</span>
-                      {!isBooked && (
-                        <svg className="w-3 h-3 opacity-60 flex-shrink-0 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                        </svg>
+                  <React.Fragment key={calSlot.id}>
+                    <div
+                      data-slot-id={calSlot.id}
+                      className={`absolute z-10 rounded px-2 py-1 text-xs font-medium transition-all overflow-hidden ${
+                        isBooked
+                          ? 'bg-gray-100 border-l-[3px] border-gray-400 text-gray-500 cursor-pointer hover:bg-gray-200 hover:shadow-md'
+                          : isSpecific
+                            ? 'bg-blue-50/80 border-l-[3px] border-blue-500 text-blue-700 cursor-pointer hover:bg-blue-100 hover:shadow-md hover:scale-[1.02]'
+                            : 'bg-green-50/80 border-l-[3px] border-green-500 text-green-700 cursor-pointer hover:bg-green-100 hover:shadow-md hover:scale-[1.02]'
+                      } ${
+                        (isShaking && isDraggingThis && !isDragging)
+                          ? 'shadow-2xl scale-[1.05] z-30'
+                          : isDraggingThis
+                          ? 'shadow-2xl z-30'
+                          : ''
+                      }`}
+                      style={{
+                        left: `${currentLeft}%`,
+                        width: `${currentWidth}%`,
+                        top: `${currentTop}px`,
+                        height: `${Math.max(calSlot.height, 24)}px`,
+                        cursor: isBooked ? 'pointer' : 'grab',
+                        transform: isShaking && isDraggingThis && !isDragging && shakeToggle
+                          ? 'translateZ(0) rotate(-1deg) translateX(-2px)'
+                          : isShaking && isDraggingThis && !isDragging && !shakeToggle
+                          ? 'translateZ(0) rotate(1deg) translateX(2px)'
+                          : 'translateZ(0)',
+                      }}
+                      title={
+                        isBooked
+                          ? `已预约: ${calSlot.bookedByName || ''} - 点击查看详情`
+                          : `${isSpecific ? '特定日期' : '常驻'}时段: ${calSlot.originalSlot.startTime.slice(0, 5)}-${calSlot.originalSlot.endTime.slice(0, 5)} - 长按可拖拽`
+                      }
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (isBooked && calSlot.booking) {
+                          setSelectedBooking(calSlot.booking);
+                          setShowBookingDetail(true);
+                        } else if (!isBooked) {
+                          handleSlotClick(calSlot, e);
+                        }
+                      }}
+                      onMouseDown={(e) => !isBooked && handleSlotMouseDown(calSlot, e)}
+                      onTouchStart={(e) => !isBooked && handleSlotMouseDown(calSlot, e)}
+                      onMouseUp={clearLongPressTimer}
+                      onTouchEnd={clearLongPressTimer}
+                      onTouchCancel={clearLongPressTimer}
+                      onMouseLeave={clearLongPressTimer}
+                    >
+                      <div className="flex items-start justify-between w-full">
+                        <span className="truncate">{displayStartTime}-{displayEndTime}</span>
+                        {!isBooked && (
+                          <svg className="w-3 h-3 opacity-60 flex-shrink-0 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                          </svg>
+                        )}
+                      </div>
+                      {isBooked && calSlot.bookedByName && (
+                        <div className="truncate text-xs opacity-70 mt-0.5">
+                          {calSlot.bookedByName}
+                        </div>
                       )}
                     </div>
-                    {isBooked && calSlot.bookedByName && (
-                      <div className="truncate text-xs opacity-70 mt-0.5">
-                        {calSlot.bookedByName}
-                      </div>
-                    )}
-                  </div>
+                  </React.Fragment>
                 );
               })}
 
@@ -794,7 +1146,7 @@ const InterviewCalendar: React.FC<InterviewCalendarProps> = ({
       {/* 创建/编辑时段对话框 */}
       {showDialog && (
         <div
-          className="fixed inset-0 z-50 flex items-start justify-center pt-[73vh] bg-black bg-opacity-50 transition-opacity"
+          className="absolute inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 transition-opacity"
           onClick={() => {
             setShowDialog(false);
             setEditingSlot(null);
@@ -941,6 +1293,121 @@ const InterviewCalendar: React.FC<InterviewCalendarProps> = ({
             </div>
           </div>
         </div>
+      )}
+
+      {/* 预约详情弹窗 */}
+      {showBookingDetail && selectedBooking && (
+        <>
+          {/* 透明遮罩层 - 点击关闭 */}
+          <div
+            className="fixed inset-0 z-49 bg-transparent"
+            onClick={() => {
+              setShowBookingDetail(false);
+              setSelectedBooking(null);
+            }}
+          />
+
+          {/* 预约详情弹窗 */}
+          <div
+            className="fixed z-50 bg-white rounded-xl shadow-2xl w-full max-w-md max-h-[150vh] overflow-y-auto"
+            style={{
+              top: '26%',
+              left: '50%',
+              transform: 'translateX(-50%)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-center px-6 py-4 border-b border-gray-200">
+              <h3 className="text-lg font-semibold text-gray-900">面试者详细信息</h3>
+              <button
+                className="text-gray-400 hover:text-gray-600"
+                onClick={() => {
+                  setShowBookingDetail(false);
+                  setSelectedBooking(null);
+                }}
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="px-6 py-4 space-y-4">
+              <div>
+                <h4 className="text-sm font-medium text-gray-500">姓名</h4>
+                <p className="text-gray-900">{selectedBooking.regularUserName}</p>
+              </div>
+
+              {selectedBooking.jobPositionName && (
+                <div>
+                  <h4 className="text-sm font-medium text-gray-500">面试岗位</h4>
+                  <p className="text-gray-900">{selectedBooking.jobPositionName}</p>
+                </div>
+              )}
+
+              {selectedBooking.gender && (
+                <div>
+                  <h4 className="text-sm font-medium text-gray-500">性别</h4>
+                  <p className="text-gray-900">{selectedBooking.gender}</p>
+                </div>
+              )}
+
+              {selectedBooking.age && (
+                <div>
+                  <h4 className="text-sm font-medium text-gray-500">年龄</h4>
+                  <p className="text-gray-900">{selectedBooking.age}</p>
+                </div>
+              )}
+
+              {selectedBooking.phone && (
+                <div>
+                  <h4 className="text-sm font-medium text-gray-500">手机号</h4>
+                  <p className="text-gray-900">{selectedBooking.phone}</p>
+                </div>
+              )}
+
+              <div>
+                <h4 className="text-sm font-medium text-gray-500">预约时间</h4>
+                <p className="text-gray-900">
+                  {selectedBooking.bookingDate} {selectedBooking.startTime.slice(0, 5)}-{selectedBooking.endTime.slice(0, 5)}
+                </p>
+              </div>
+
+              {selectedBooking.feishuMeetingUrl && (
+                <div>
+                  <h4 className="text-sm font-medium text-gray-500">会议链接</h4>
+                  <a
+                    href={selectedBooking.feishuMeetingUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-600 hover:text-blue-800"
+                  >
+                    {selectedBooking.feishuMeetingUrl}
+                  </a>
+                </div>
+              )}
+
+              {selectedBooking.introduction && (
+                <div>
+                  <h4 className="text-sm font-medium text-gray-500">个人介绍</h4>
+                  <p className="text-gray-900">{selectedBooking.introduction}</p>
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-end px-6 py-4 border-t border-gray-200 bg-gray-50 rounded-b-xl">
+              <button
+                onClick={() => {
+                  setShowBookingDetail(false);
+                  setSelectedBooking(null);
+                }}
+                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors"
+              >
+                关闭
+              </button>
+            </div>
+          </div>
+        </>
       )}
     </div>
   );

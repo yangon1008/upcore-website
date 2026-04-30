@@ -333,8 +333,8 @@ router.post('/', async (req, res) => {
   console.log('========== 收到预约请求 ==========');
   console.log('请求体:', JSON.stringify(req.body, null, 2));
   try {
-    const { adminUserId, adminUserName, regularUserId, regularUserName, invitationCode, jobPositionId, jobPositionName, bookingDate, startTime, endTime } = req.body;
-    console.log('解析后的参数:', { adminUserId, adminUserName, regularUserId, regularUserName, invitationCode, jobPositionId, jobPositionName, bookingDate, startTime, endTime });
+    const { adminUserId, adminUserName, regularUserId, regularUserName, invitationCode, jobPositionId, jobPositionName, bookingDate, startTime, endTime, slotId } = req.body;
+    console.log('解析后的参数:', { adminUserId, adminUserName, regularUserId, regularUserName, invitationCode, jobPositionId, jobPositionName, bookingDate, startTime, endTime, slotId });
     
     if (!adminUserId || !regularUserName || !bookingDate || !startTime || !endTime) {
       console.log('❌ 缺少必要参数');
@@ -342,27 +342,34 @@ router.post('/', async (req, res) => {
     }
 
     console.log('✅ 检查是否已经存在预约...');
-    const [existingBookings] = await pool.execute(
-      `SELECT id FROM bookings 
-       WHERE admin_user_id = ? 
-         AND booking_date = ? 
-         AND start_time = ? 
-         AND status = 'confirmed'`,
-      [adminUserId, bookingDate, startTime]
-    );
+    let existingBookingQuery: string;
+    let queryParams: any[];
+    
+    // 如果有slotId，用slotId + 日期检查
+    if (slotId) {
+      existingBookingQuery = `SELECT id FROM bookings WHERE admin_user_id = ? AND slot_id = ? AND booking_date = ? AND status = 'confirmed'`;
+      queryParams = [adminUserId, slotId, bookingDate];
+    } else {
+      // 没有slotId，用日期 + 时间检查（兼容历史数据）
+      existingBookingQuery = `SELECT id FROM bookings WHERE admin_user_id = ? AND booking_date = ? AND start_time = ? AND status = 'confirmed'`;
+      queryParams = [adminUserId, bookingDate, startTime];
+    }
+    
+    console.log('预约冲突查询:', { query: existingBookingQuery, params: queryParams });
+    const [existingBookings] = await pool.execute(existingBookingQuery, queryParams);
     console.log('已存在预约数量:', (existingBookings as any[]).length);
 
     if ((existingBookings as any[]).length > 0) {
-      console.log('❌ 该时间段已被预约');
-      return res.status(400).json({ success: false, error: '该时间段已被预约' });
+      console.log('❌ 该时段已被预约');
+      return res.status(400).json({ success: false, error: '该时段已被预约' });
     }
 
     console.log('✅ 开始插入预约记录...');
     const [result] = await pool.execute(
       `INSERT INTO bookings (admin_user_id, admin_user_name, regular_user_id, regular_user_name,
-                              invitation_code, booking_date, start_time, end_time, status)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'confirmed')`,
-      [adminUserId, adminUserName || '', regularUserId, regularUserName, invitationCode || '', bookingDate, startTime, endTime]
+                              invitation_code, booking_date, start_time, end_time, slot_id, status)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'confirmed')`,
+      [adminUserId, adminUserName || '', regularUserId, regularUserName, invitationCode || '', bookingDate, startTime, endTime, slotId || null]
     );
 
     const insertResult = result as any;
@@ -447,6 +454,7 @@ router.post('/', async (req, res) => {
     console.log('========== 返回成功响应 ==========');
     const responseData = {
       id: bookingId,
+      slotId,
       bookingDate,
       startTime,
       endTime,
@@ -483,13 +491,13 @@ router.get('/', async (req, res) => {
     let params: any[];
 
     if (adminUserId) {
-      let dateCondition = 'AND b.booking_date >= CURDATE()';
+      let dateCondition = '';
       if (startDate && endDate) {
         dateCondition = 'AND b.booking_date >= ? AND b.booking_date <= ?';
       }
       
       query = `
-        SELECT b.id, b.regular_user_name as regularUserName, DATE_FORMAT(b.booking_date, '%Y-%m-%d') as bookingDate,
+        SELECT b.id, b.slot_id as slotId, b.regular_user_name as regularUserName, DATE_FORMAT(b.booking_date, '%Y-%m-%d') as bookingDate,
                DATE_FORMAT(b.start_time, '%H:%i') as startTime, DATE_FORMAT(b.end_time, '%H:%i') as endTime,
                b.feishu_meeting_url as feishuMeetingUrl, b.status, b.created_at as createdAt,
                i.used_by_gender as gender, i.used_by_age as age, i.used_by_phone as phone,
@@ -499,7 +507,7 @@ router.get('/', async (req, res) => {
          LEFT JOIN invitation_codes i ON b.invitation_code = i.code
          WHERE b.admin_user_id = ? AND b.status = 'confirmed'
          ${dateCondition}
-         ORDER BY b.booking_date ASC, b.start_time ASC
+         ORDER BY b.booking_date DESC, b.start_time DESC
       `;
       
       params = [adminUserId];

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { feishuService, FeishuUser } from '../utils/feishu';
-import { generateCode, getCodes, getAdminSlots, getJobPositions, createJobPosition, updateJobPosition, deleteJobPosition, getBookings, InvitationCodeData, SlotData, JobPositionData, BookingData } from '../utils/database';
+import { generateCode, getCodes, getAdminSlots, getJobPositions, createJobPosition, updateJobPosition, deleteJobPosition, getBookings, markCodeAsCopied, InvitationCodeData, SlotData, JobPositionData, BookingData } from '../utils/database';
 import InterviewCalendar from './InterviewCalendar';
 
 interface AdminPanelProps {
@@ -107,10 +107,26 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ user, onRefresh }) => {
     }
   };
 
-  const copyCode = (code: string) => {
-    navigator.clipboard.writeText(code);
-    setCopiedCode(code);
-    setTimeout(() => setCopiedCode(null), 2000);
+  const copyCode = async (code: string) => {
+    try {
+      // 复制到剪贴板
+      await navigator.clipboard.writeText(code);
+      
+      // 标记为已复制
+      const codeItem = invitationCodes.find(c => c.code === code);
+      if (codeItem && !codeItem.isCopied) {
+        await markCodeAsCopied(code);
+        // 更新本地状态
+        setInvitationCodes(invitationCodes.map(c => 
+          c.code === code ? { ...c, isCopied: true } : c
+        ));
+      }
+      
+      setCopiedCode(code);
+      setTimeout(() => setCopiedCode(null), 2000);
+    } catch (err: any) {
+      console.error('复制邀请码失败:', err);
+    }
   };
 
   const formatDate = (dateStr: string) => {
@@ -213,8 +229,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ user, onRefresh }) => {
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center space-x-3">
                     <code className="text-lg font-mono font-bold text-blue-600 bg-blue-50 px-3 py-1 rounded">{codeItem.code}</code>
-                    <button onClick={() => copyCode(codeItem.code)} className="text-gray-500 hover:text-blue-600 transition-colors">
-                      {copiedCode === codeItem.code ? <span className="text-green-600 text-sm">已复制!</span> : <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 002 2v8a2 2 0 00-2-2h-8a2 2 0 002 2z" /></svg>}
+                    <button onClick={() => copyCode(codeItem.code)} className={`transition-colors ${codeItem.isCopied ? 'text-gray-400' : 'text-green-600 hover:text-green-700'}`}>
+                      {copiedCode === codeItem.code ? <span className="text-green-600 text-sm">已复制!</span> : <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 0 002-2v-8a2 0 00-2-2h-8a2 0 002 2v8a2 0 00-2-2h-8a2 0 002 2z" /></svg>}
                     </button>
                   </div>
                   <div className="flex items-center space-x-2">

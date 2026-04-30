@@ -67,8 +67,8 @@ const AppPage: React.FC<AppPageProps> = ({ onNavigate }) => {
                   <button 
                     onClick={() => {
                       const link = document.createElement('a');
-                      link.href = '/upcore_app.apk';
-                      link.download = 'upcore_app.apk';
+                      link.href = '/upcore_app_260501.apk';
+                      link.download = 'upcore_app_260501.apk';
                       document.body.appendChild(link);
                       link.click();
                       document.body.removeChild(link);

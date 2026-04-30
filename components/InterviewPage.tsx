@@ -42,11 +42,8 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onBack }) => {
       console.log('========== 前端加载预约列表 ==========');
       const data = await getBookings(adminUserId);
       console.log('从后端获取的原始数据:', JSON.stringify(data, null, 2));
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const validBookings = data.filter((b) => new Date(b.bookingDate) >= today);
-      console.log('过滤后的预约列表:', JSON.stringify(validBookings, null, 2));
-      setBookings(validBookings);
+      console.log('显示所有预约列表，不进行日期过滤');
+      setBookings(data);
     } catch (err) {
       console.error('加载预约列表失败:', err);
     }

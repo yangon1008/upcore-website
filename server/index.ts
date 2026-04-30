@@ -9,6 +9,7 @@ import feishuRoutes from './routes/feishu';
 import jobPositionsRoutes from './routes/jobPositions';
 import filesRoutes from './routes/files';
 import usersRoutes from './routes/users';
+import geolocationRoutes from './routes/geolocation';
 import { initializeDatabase } from './db/connection';
 import { startTokenRefreshService } from './services/tokenRefreshService';
 
@@ -67,6 +68,7 @@ app.use('/api/feishu', feishuRoutes);
 app.use('/api/job-positions', jobPositionsRoutes);
 app.use('/api/files', filesRoutes);
 app.use('/api/users', usersRoutes);
+app.use('/api/geolocation', geolocationRoutes);
 
 // 配置静态文件服务，提供上传的文件
 app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
@@ -105,6 +107,8 @@ async function start() {
       console.log(`   POST   /api/files/upload/single       — 单个文件上传`);
       console.log(`   POST   /api/users/refresh-token        — 手动刷新用户令牌`);
       console.log(`   POST   /api/users/refresh-all-tokens   — 手动刷新所有令牌`);
+      console.log(`   GET    /api/geolocation/detect         — 检测IP地理位置`);
+      console.log(`   POST   /api/geolocation/set-language   — 设置语言（测试用）`);
     });
     
     // 启动令牌刷新服务

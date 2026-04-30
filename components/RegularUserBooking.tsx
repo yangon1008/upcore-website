@@ -204,6 +204,7 @@ const RegularUserBooking: React.FC<RegularUserBookingProps> = ({ user, onRefresh
         bookingDate: selectedSlot.date,
         startTime: selectedSlot.startTime,
         endTime: selectedSlot.endTime,
+        slotId: selectedSlot.id,
         files: userInfo.files
       });
       setBookingResult(result);
@@ -412,7 +413,7 @@ const RegularUserBooking: React.FC<RegularUserBookingProps> = ({ user, onRefresh
             <span className="font-medium">{userInfo.jobPositionName}</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-gray-500">时间</span>
+            <span className="text-gray-500">北京时间</span>
             <span className="font-medium">{bookingResult?.bookingDate} {bookingResult?.startTime}-{bookingResult?.endTime}</span>
           </div>
           {bookingResult?.feishuMeetingUrl && (

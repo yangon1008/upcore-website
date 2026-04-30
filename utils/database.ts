@@ -13,6 +13,7 @@ export interface InvitationCodeData {
   expiresAt: string;
   isUsed?: boolean;
   usedByName?: string;
+  isCopied?: boolean;
 }
 
 export interface VerifyResult {
@@ -49,6 +50,7 @@ export interface AvailableSlotData {
 
 export interface BookingData {
   id: number;
+  slotId?: number;
   regularUserName: string;
   bookingDate: string;
   startTime: string;
@@ -66,6 +68,7 @@ export interface BookingData {
 
 export interface CreateBookingResult {
   id: number;
+  slotId?: number;
   bookingDate: string;
   startTime: string;
   endTime: string;
@@ -172,6 +175,15 @@ export async function getUserInfoFromInvitationCode(userId: string): Promise<Use
   return data.userInfo;
 }
 
+export async function markCodeAsCopied(code: string): Promise<void> {
+  const res = await fetch(`${CODES_BASE}/${encodeURIComponent(code)}/copied`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' }
+  });
+  const data = await res.json();
+  if (!data.success) throw new Error(data.error || '标记复制状态失败');
+}
+
 export async function getAdminSlots(adminUserId: string): Promise<SlotData[]> {
   const res = await fetch(`${SLOTS_BASE}?adminUserId=${encodeURIComponent(adminUserId)}`);
   const data = await res.json();
@@ -229,6 +241,7 @@ export async function createBooking(booking: {
   bookingDate: string;
   startTime: string;
   endTime: string;
+  slotId?: number;
   calendarId?: string;
   color?: string;
   files?: any[];
