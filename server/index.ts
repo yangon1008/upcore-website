@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import path from 'path';
+import fs from 'fs';
 import invitationCodesRoutes from './routes/invitationCodes';
 import slotsRoutes from './routes/slots';
 import bookingsRoutes from './routes/bookings';
@@ -13,6 +14,17 @@ import { startTokenRefreshService } from './services/tokenRefreshService';
 
 const app = express();
 const PORT = parseInt(process.env.PORT || '3001');
+
+// Universal Links - apple-app-site-association (放在最前面)
+app.get('/.well-known/apple-app-site-association', (_req, res) => {
+  console.log('========== 处理AASA请求 ==========');
+  const aasaPath = path.join(process.cwd(), 'public', '.well-known', 'apple-app-site-association');
+  const content = fs.readFileSync(aasaPath, 'utf8');
+  res.setHeader('Content-Type', 'application/json');
+  res.setHeader('Cache-Control', 'public, max-age=3600');
+  res.send(content);
+  console.log('========== AASA请求完成 ==========');
+});
 
 app.use(cors());
 app.use(express.json());
